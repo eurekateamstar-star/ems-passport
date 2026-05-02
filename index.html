@@ -12,20 +12,18 @@
     
     <style>
         :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); --header-bg: #f1f5f9; }
-        
         html, body { margin: 0; padding: 0; background: var(--header-bg); color: #1e293b; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif; height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
         
         #app { width:100%; height:100dvh; max-width:450px; margin:0 auto; display:flex; flex-direction:column; position:relative; background:#f1f5f9; box-shadow:0 0 50px rgba(0,0,0,.08); }
         .font-num { font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.02em; }
         .list-card { background:#fff; border:1px solid #e2e8f0; border-radius:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,.02); overflow:hidden; }
         
-        /* 橫向滑動 Tabs */
+        /* 橫向導覽與左右滑動 */
         .tabs-section { flex-shrink:0; background:#f1f5f9; z-index:30; }
         .tabs-scroll-container { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 4px 20px 8px 20px; gap: 16px; }
         .tabs-scroll-container::-webkit-scrollbar { display: none; }
         .tab-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
         
-        /* 左右滑動內容區 */
         .slides-section { flex:1; overflow:hidden; min-height:0; display:flex; flex-direction:column; }
         .content-slider { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; width:100%; height:100%; scroll-behavior: smooth; }
         .content-slider::-webkit-scrollbar { display:none; }
@@ -34,9 +32,13 @@
 
         .passport-gradient { background: linear-gradient(to bottom right, #0ea5e9, #10b981) !important; color: white !important; }
 
-        /* ==========================================
-           第一層：主彈窗 (置中、列出小項)
-           ========================================== */
+        /* Bottom Sheet 彈窗 (全域確認與題庫管理) */
+        .bottom-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .bottom-sheet-overlay.active { opacity: 1; pointer-events: auto; }
+        .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top-left-radius: 32px; border-top-right-radius: 32px; z-index: 1001; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; padding: 24px; padding-bottom: calc(24px + var(--safe-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,0.15); }
+        .bottom-sheet.active { transform: translateY(0); }
+
+        /* 置中主彈窗 (第一層：小項列表) */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .centered-modal { background: #f8fafc; width: 100%; max-width: 420px; max-height: 90dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -44,19 +46,47 @@
         .modal-body { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
         .modal-body::-webkit-scrollbar { display: none; }
 
-        /* ==========================================
-           第二層：子彈窗 (評分對話框)
-           ========================================== */
+        /* 子彈窗 (第二層：評分對話框) */
         .sub-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
         .sub-modal-overlay.active { opacity: 1; pointer-events: auto; }
         .sub-centered-modal { background: #ffffff; width: 100%; max-width: 380px; max-height: 85dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .sub-modal-overlay.active .sub-centered-modal { transform: translateY(0); }
         .sub-modal-body { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
         .sub-modal-body::-webkit-scrollbar { display: none; }
+        
+        /* 全螢幕彈窗 (題庫編輯器專用) */
+        .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; }
+        .full-screen-modal.active { transform: translateY(0); }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
 <body>
 <div id="app">
+
+    <!-- 全域 Toast 提示訊息 -->
+    <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300"
+         :class="toast.show ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'">
+        <div class="bg-slate-800 text-white px-6 py-3.5 rounded-[14px] shadow-2xl text-[13px] font-bold flex items-center gap-3 whitespace-nowrap border border-slate-700">
+            <i :class="toast.icon" :style="{ color: toast.color }"></i>
+            {{ toast.msg }}
+        </div>
+    </div>
+
+    <!-- 全域確認彈窗 -->
+    <div class="bottom-sheet-overlay" :class="{ active: appConfirm.show }" @click="appConfirm.show = false"></div>
+    <div class="bottom-sheet" :class="{ active: appConfirm.show }">
+        <div class="text-center py-4">
+            <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-circle-question text-3xl text-amber-500"></i>
+            </div>
+            <h4 class="text-xl font-black text-slate-800 mb-2">{{ appConfirm.title }}</h4>
+            <p class="text-sm font-bold text-slate-400 mb-8">{{ appConfirm.msg }}</p>
+            <div class="flex gap-3">
+                <button @click="appConfirm.show = false" class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-500 font-black text-sm active:scale-95 transition-transform">取消</button>
+                <button @click="appConfirm.onConfirm" class="flex-1 py-4 rounded-2xl bg-amber-500 text-white font-black text-sm shadow-lg shadow-amber-200 active:scale-95 transition-transform">確認執行</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Header -->
     <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-between items-center bg-[#f1f5f9] shrink-0 z-50">
@@ -64,8 +94,14 @@
             <p class="text-[10px] text-emerald-600 font-black tracking-widest uppercase mb-0.5">EMS Passport</p>
             <h1 class="text-3xl font-black text-slate-800 tracking-tight">海山救護</h1>
         </div>
-        <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl">
-            <i class="fa-solid fa-circle-notch"></i>
+        <div class="flex items-center gap-3">
+            <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl">
+                <i class="fa-solid fa-circle-notch"></i>
+            </div>
+            <!-- 題庫管理按鈕 -->
+            <button v-if="isInstructorMode" @click="openEditorList" class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white shadow-md active:scale-95 transition-transform">
+                <i class="fa-solid fa-pen-to-square text-sm"></i>
+            </button>
         </div>
     </header>
 
@@ -75,11 +111,17 @@
             <div class="flex flex-col flex-1 mr-4">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="text-slate-400 text-[10px] font-black uppercase">切換學員 (Student)</span>
-                    <span class="px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-[10px] font-black shadow-sm">教官: {{ instructorName }}</span>
+                    <span v-if="isInstructorMode" class="px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-[10px] font-black shadow-sm">
+                        教官: {{ currentInstructorName }}
+                    </span>
+                    <span v-else class="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-black border border-slate-200">
+                        學員模式
+                    </span>
                 </div>
+                
                 <div class="relative mt-0.5">
                     <select v-model="selectedStudent" class="w-full bg-transparent text-lg font-black text-slate-800 outline-none appearance-none cursor-pointer">
-                        <option v-for="user in usersList" :key="user.uid" :value="user.name">{{ user.name }}</option>
+                        <option v-for="user in studentsList" :key="user.name" :value="user.name">{{ user.name }}</option>
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-sm"></i>
                 </div>
@@ -148,24 +190,29 @@
 
                 <div v-else class="space-y-3">
                     <div v-for="item in cat.items" :key="item.id" 
-                         @click="openMainModal(item)"
-                         class="list-card p-4 flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all bg-white">
+                         @click="handleItemClick(item)"
+                         class="list-card p-4 flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all bg-white relative overflow-hidden">
                         
-                        <div class="flex flex-col flex-1 pr-4">
+                        <div v-if="!isInstructorMode" class="absolute inset-0 bg-slate-50/30"></div>
+
+                        <div class="flex flex-col flex-1 pr-4 relative z-10">
                             <span class="font-black text-slate-800 text-[15px]">{{ item.name }}</span>
-                            <span class="text-[10px] font-bold text-slate-400 mt-1">點擊進行考核</span>
+                            <span v-if="isInstructorMode" class="text-[10px] font-bold text-emerald-500 mt-1"><i class="fa-solid fa-pen-to-square"></i> 點擊進行考核</span>
+                            <span v-else class="text-[10px] font-bold text-slate-400 mt-1">僅限教官查看細項</span>
                         </div>
                         
-                        <div v-if="item.status === 'Pass'" class="flex flex-col items-end">
-                            <i class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i>
-                            <span class="text-[10px] font-bold text-emerald-600 mt-1 font-num">{{ item.score }} 分</span>
-                        </div>
-                        <div v-else-if="item.status === 'Fail'" class="flex flex-col items-end">
-                            <i class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i>
-                            <span class="text-[10px] font-bold text-rose-600 mt-1 font-num">{{ item.score }} 分</span>
-                        </div>
-                        <div v-else>
-                            <div class="w-6 h-6 rounded-full border-[2px] border-slate-200"></div>
+                        <div class="relative z-10">
+                            <div v-if="item.status === 'Pass'" class="flex flex-col items-end">
+                                <i class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i>
+                                <span class="text-[10px] font-bold text-emerald-600 mt-1 font-num">{{ item.score }} 分</span>
+                            </div>
+                            <div v-else-if="item.status === 'Fail'" class="flex flex-col items-end">
+                                <i class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i>
+                                <span class="text-[10px] font-bold text-rose-600 mt-1 font-num">{{ item.score }} 分</span>
+                            </div>
+                            <div v-else>
+                                <div class="w-6 h-6 rounded-full border-[2px] border-slate-200"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -174,8 +221,159 @@
         </div>
     </div>
 
+    <!-- 右下角教官登入按鈕 -->
+    <div class="absolute bottom-6 right-6 z-40">
+        <button v-if="!isInstructorMode" @click="isLoginModalOpen = true" class="w-14 h-14 rounded-full bg-yellow-400 text-yellow-900 shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-yellow-300">
+            <i class="fa-solid fa-lock text-xl"></i>
+        </button>
+        <button v-else @click="handleLogout" class="w-14 h-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-emerald-500">
+            <i class="fa-solid fa-unlock-keyhole text-xl"></i>
+        </button>
+    </div>
+
     <!-- ============================================== -->
-    <!-- 第一層：主彈窗 (列出所有小項) -->
+    <!-- 全新功能：題庫編輯管理中心 (In-App CMS) -->
+    <!-- ============================================== -->
+    <div class="full-screen-modal" :class="{ active: isEditorOpen }">
+        <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-3 px-5 flex justify-between items-center bg-slate-800 text-white shrink-0 shadow-md">
+            <div>
+                <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-0.5">Management</p>
+                <h1 class="text-xl font-black">題庫管理中心</h1>
+            </div>
+            <button @click="closeEditor" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </header>
+
+        <div v-if="editorMode === 'list'" class="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
+            <button @click="createNewItem" class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform flex justify-center items-center gap-2">
+                <i class="fa-solid fa-plus"></i> 新增考核項目
+            </button>
+
+            <div v-for="cat in displayCategories" :key="'edit-'+cat.id" class="space-y-3">
+                <h3 class="text-sm font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 pb-1 ml-1">{{ cat.name }}</h3>
+                <div v-for="item in cat.items" :key="'edit-item-'+item.id" class="list-card p-3 flex justify-between items-center bg-white shadow-sm">
+                    <span class="font-bold text-[14px] text-slate-700 truncate flex-1 pr-2">{{ item.name }}</span>
+                    <div class="flex gap-2 shrink-0">
+                        <button @click="editItem(item)" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center active:scale-95">
+                            <i class="fa-solid fa-pen text-xs"></i>
+                        </button>
+                        <button @click="deleteItem(item)" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center active:scale-95">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="editorMode === 'edit'" class="flex-1 overflow-y-auto p-5 pb-32 space-y-5">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
+                    <i class="fa-solid fa-cube text-blue-500"></i>
+                    <span class="font-black text-sm text-slate-700">基本設定</span>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-black text-slate-500">大類別 (Category)</label>
+                    <input v-model="editForm.category" type="text" placeholder="例如：基本技能" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-black text-slate-500">項目名稱 (Item Name)</label>
+                    <input v-model="editForm.name" type="text" placeholder="例如：救護車點班" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-black text-slate-500">圖示 (Icon)</label>
+                        <input v-model="editForm.icon" type="text" placeholder="fa-ambulance" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-black text-slate-500">狀態</label>
+                        <select v-model="editForm.locked" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none">
+                            <option :value="false">開啟使用</option>
+                            <option :value="true">鎖定隱藏</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-black text-slate-500">準備器材 (選填)</label>
+                    <textarea v-model="editForm.equipment" placeholder="請輸入器材清單..." class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none h-20"></textarea>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-emerald-500"></i>
+                        <span class="font-black text-sm text-slate-700">評分步驟設定</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">共 {{ editForm.steps.length }} 步</span>
+                </div>
+
+                <div v-for="(step, idx) in editForm.steps" :key="idx" class="relative p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <button @click="removeStep(idx)" class="absolute top-2 right-2 w-6 h-6 bg-rose-100 text-rose-500 rounded flex items-center justify-center active:scale-90">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                    <div class="space-y-1 pr-8">
+                        <label class="text-[10px] font-black text-slate-500">小分類標題 (Sub Item)</label>
+                        <input v-model="step.subItem" type="text" placeholder="例如：頭部頸椎限制" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] font-bold text-slate-800 outline-none">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-black text-slate-500">操作內容 (Standard)</label>
+                        <textarea v-model="step.text" placeholder="輸入具體動作..." class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] font-bold text-slate-800 outline-none h-16"></textarea>
+                    </div>
+                </div>
+
+                <button @click="addStep" class="w-full py-3 rounded-xl border border-dashed border-emerald-400 text-emerald-600 bg-emerald-50 font-black text-sm active:scale-95 transition-transform">
+                    <i class="fa-solid fa-plus mr-1"></i> 新增一個步驟
+                </button>
+            </div>
+        </div>
+
+        <div v-if="editorMode === 'edit'" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-bottom))] flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-50">
+            <button @click="editorMode = 'list'" class="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-[12px] font-black text-sm active:scale-95 transition-transform">取消</button>
+            <button @click="saveItem" :disabled="isEditorSaving" class="flex-[2] py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base shadow-lg shadow-blue-200 active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
+                <i v-if="!isEditorSaving" class="fa-solid fa-cloud-arrow-up"></i>
+                <i v-else class="fa-solid fa-spinner fa-spin"></i>
+                {{ isEditorSaving ? '儲存同步中...' : '儲存至資料庫' }}
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 教官登入彈窗 -->
+    <!-- ============================================== -->
+    <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="isLoginModalOpen = false">
+        <div class="centered-modal bg-white">
+            <div class="px-5 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h2 class="text-[20px] font-black text-slate-800">教官模式登入</h2>
+                <button @click="isLoginModalOpen = false" class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 shrink-0">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="modal-body bg-slate-50 space-y-4 pt-5 pb-6">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-black text-slate-500 pl-1">選擇教官姓名</label>
+                    <div class="relative">
+                        <!-- ★ 修正點：這裡綁定的是 InstructorsList -->
+                        <select v-model="loginForm.name" class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[14px] font-bold text-slate-800 outline-none appearance-none">
+                            <option value="" disabled>請選擇...</option>
+                            <option v-for="inst in instructorsList" :key="inst.name" :value="inst.name">{{ inst.name }}</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-xs"></i>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-black text-slate-500 pl-1">安全密碼</label>
+                    <input v-model="loginForm.password" type="password" placeholder="請輸入密碼" class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[14px] font-bold text-slate-800 outline-none focus:border-emerald-500">
+                </div>
+                <button @click="handleLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base shadow-md active:scale-95 transition-transform mt-4">
+                    解鎖教官功能
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 第一層：主彈窗 (列出小項與歷史紀錄) -->
     <!-- ============================================== -->
     <div class="modal-overlay" :class="{ active: isMainModalOpen }" @click.self="isMainModalOpen = false">
         <div class="centered-modal">
@@ -187,41 +385,65 @@
                 </button>
             </div>
 
-            <div class="modal-body bg-slate-50 space-y-3 pt-4">
+            <div class="modal-body bg-slate-50 pt-4 flex flex-col gap-5">
                 
-                <!-- 準備器材摺疊區 (復刻截圖) -->
-                <div v-if="activeItem?.equipment" class="mb-4">
-                    <div @click="showEquipment = !showEquipment" class="flex items-center gap-2 cursor-pointer w-fit text-emerald-600">
+                <div v-if="activeItem?.equipment">
+                    <div @click="showEquipment = !showEquipment" class="flex items-center gap-2 cursor-pointer w-fit text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
                         <i class="fa-solid fa-briefcase-medical text-sm"></i>
                         <span class="font-black text-xs">準備器材</span>
                         <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="{'rotate-180': showEquipment}"></i>
                     </div>
-                    <div v-show="showEquipment" class="mt-2 p-3 bg-white rounded-xl border border-emerald-100 text-xs font-bold text-slate-600 whitespace-pre-line shadow-sm">
+                    <div v-show="showEquipment" class="mt-2 p-3 bg-white rounded-xl border border-emerald-100 text-[13px] font-bold text-slate-600 whitespace-pre-line shadow-sm">
                         {{ activeItem?.equipment }}
                     </div>
                 </div>
 
-                <!-- 小項列表 (點擊開啟第二層) -->
-                <div v-for="(section, secIdx) in itemSections" :key="secIdx" 
-                     @click="openSubModal(section)"
-                     class="bg-white border border-slate-200 rounded-[14px] flex justify-between items-center cursor-pointer active:bg-slate-50 transition-colors shadow-sm relative overflow-hidden">
-                    
-                    <!-- 左側顏色指示條 -->
-                    <div class="absolute left-0 top-0 bottom-0 w-1.5 transition-colors" :class="getSectionBarColor(section)"></div>
-                    
-                    <div class="px-5 py-4 flex-1">
-                        <span class="font-bold text-[15px] text-slate-700">{{ section.title }}</span>
-                    </div>
-                    
-                    <!-- 向右箭頭 -->
-                    <div class="pr-5 text-slate-300">
-                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                <div class="space-y-2.5">
+                    <div v-for="(section, secIdx) in itemSections" :key="secIdx" 
+                         @click="openSubModal(section)"
+                         class="bg-white border border-slate-200 rounded-[14px] flex justify-between items-center cursor-pointer active:bg-slate-50 transition-colors shadow-sm relative overflow-hidden">
+                        
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5 transition-colors" :class="getSectionBarColor(section)"></div>
+                        <div class="px-5 py-4 flex-1 flex items-center gap-2">
+                            <span class="font-bold text-[15px] text-slate-700">{{ section.title }}</span>
+                            <span v-if="isSectionCompleted(section)" class="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">已完成</span>
+                        </div>
+                        <div class="pr-5 text-slate-300"><i class="fa-solid fa-chevron-right text-xs"></i></div>
                     </div>
                 </div>
+
+                <div v-if="activeItemHistory.length > 0" class="border-t border-slate-200 pt-4 mt-2">
+                    <h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">歷史考核紀錄</h5>
+                    <div class="space-y-2">
+                        <div v-for="(log, idx) in activeItemHistory" :key="idx" 
+                             class="flex justify-between items-center p-3 rounded-xl border shadow-sm bg-white"
+                             :class="log.status === 'Pass' ? 'border-emerald-100' : 'border-rose-100'">
+                            <div class="flex items-center gap-3">
+                                <i v-if="log.status === 'Pass'" class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i>
+                                <i v-else class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i>
+                                <div>
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <span class="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-black border border-yellow-200 shadow-sm">
+                                            教官: {{ log.instructor }}
+                                        </span>
+                                        <span class="text-[9px] font-black px-1.5 py-0.5 rounded"
+                                              :class="log.status === 'Pass' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'">
+                                            {{ log.status === 'Pass' ? '通過' : '未過' }}
+                                        </span>
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 font-bold font-num"><i class="fa-regular fa-clock"></i> {{ formatTime(log.timestamp) }}</span>
+                                </div>
+                            </div>
+                            <div class="text-2xl font-black font-num" :class="log.status === 'Pass' ? 'text-emerald-600' : 'text-rose-600'">
+                                {{ log.score }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- 底部固定：算分與提交 -->
-            <div class="bg-white border-t border-slate-100 p-5 shrink-0">
+            <div class="bg-white border-t border-slate-100 p-5 shrink-0 relative">
                 <div class="flex justify-between items-center mb-4 px-1">
                     <span class="text-sm font-black text-slate-500">目前得分 (95分及格)</span>
                     <span class="text-[32px] font-black font-num transition-colors leading-none" :class="liveScore >= 95 ? 'text-emerald-600' : 'text-rose-600'">
@@ -236,45 +458,44 @@
                     <i v-else class="fa-solid fa-spinner fa-spin"></i>
                     {{ isSubmitting ? '儲存中...' : '提交成績' }}
                 </button>
-                <div class="text-center mt-3 text-[10px] text-slate-400 font-bold">
-                    正在評核: <span class="font-black text-slate-600">{{ selectedStudent }}</span>
+                
+                <div class="text-center mt-3">
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                        正在評核: <span class="font-black text-emerald-600">{{ selectedStudent }}</span>
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ============================================== -->
-    <!-- 第二層：子彈窗 (細項評分對話框，復刻第三張圖) -->
+    <!-- 第二層：子彈窗 (細項評分對話框) -->
     <!-- ============================================== -->
     <div class="sub-modal-overlay" :class="{ active: activeSubModal !== null }" @click.self="activeSubModal = null">
         <div class="sub-centered-modal">
             
-            <!-- 子彈窗標題 -->
-            <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+            <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <h3 class="font-black text-slate-800 text-lg">{{ activeSubModal?.title }}</h3>
             </div>
             
-            <!-- 評分步驟列表 -->
             <div class="sub-modal-body space-y-4 bg-white">
-                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="step.globalIdx" class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="step.globalIdx" class="space-y-3 border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
                     
-                    <div class="flex items-start gap-3 mb-4">
-                        <!-- 灰色圓圈數字 -->
+                    <div class="flex items-start gap-3">
                         <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]">
                             {{ stepIdx + 1 }}
                         </div>
-                        <p class="text-[14px] font-bold text-slate-700 leading-relaxed pt-0.5">{{ step.text }}</p>
+                        <p class="text-[14px] font-bold text-slate-700 leading-relaxed pt-0.5 whitespace-pre-line">{{ step.text }}</p>
                     </div>
                     
-                    <!-- ✓ 標準正確 / X 未通過 -->
-                    <div class="flex gap-2 w-full">
+                    <div class="flex gap-2 pl-9">
                         <button @click="setStepStatus(step.globalIdx, true)" 
-                                class="flex-1 py-2.5 rounded-xl font-black text-[13px] border transition-all active:scale-95"
+                                class="flex-1 py-2.5 rounded-[10px] font-black text-[13px] border transition-all active:scale-95"
                                 :class="gradingState[step.globalIdx] === true ? 'bg-emerald-50 text-emerald-600 border-emerald-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'">
                             <i class="fa-solid fa-check mr-1"></i> 標準正確
                         </button>
                         <button @click="setStepStatus(step.globalIdx, false)" 
-                                class="flex-1 py-2.5 rounded-xl font-black text-[13px] border transition-all active:scale-95"
+                                class="flex-1 py-2.5 rounded-[10px] font-black text-[13px] border transition-all active:scale-95"
                                 :class="gradingState[step.globalIdx] === false ? 'bg-rose-50 text-rose-600 border-rose-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'">
                             <i class="fa-solid fa-xmark mr-1"></i> 未通過
                         </button>
@@ -282,7 +503,6 @@
                 </div>
             </div>
 
-            <!-- 完成返回按鈕 -->
             <div class="p-4 border-t border-slate-100 bg-white shrink-0">
                 <button @click="activeSubModal = null" class="w-full bg-slate-800 text-white py-3.5 rounded-[12px] font-black text-[15px] active:scale-95 transition-transform shadow-md">
                     完成並返回
@@ -296,7 +516,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { createApp, ref, computed, watch, onMounted, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js";
 
     // ★★★ 替換為你的 Firebase Config ★★★
@@ -313,17 +533,12 @@
     const db = getFirestore(fireApp);
 
     const colorThemes = [
-        { bg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-700' },
-        { bg: 'bg-indigo-600', text: 'text-indigo-600', border: 'border-indigo-700' },
-        { bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-700' },
-        { bg: 'bg-rose-600', text: 'text-rose-600', border: 'border-rose-700' },
-        { bg: 'bg-amber-500', text: 'text-amber-600', border: 'border-amber-600' },
-        { bg: 'bg-cyan-600', text: 'text-cyan-600', border: 'border-cyan-700' }
+        { bg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-700' }, { bg: 'bg-indigo-600', text: 'text-indigo-600', border: 'border-indigo-700' },
+        { bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-700' }, { bg: 'bg-rose-600', text: 'text-rose-600', border: 'border-rose-700' },
+        { bg: 'bg-amber-500', text: 'text-amber-600', border: 'border-amber-600' }, { bg: 'bg-cyan-600', text: 'text-cyan-600', border: 'border-cyan-700' }
     ];
 
-    const CATEGORY_ORDER = [
-        '基本技能', '呼吸道管理', '呼吸管理', '現場處置', '外科器材運用', '運送患者及搬運', '內科器材運用', '內外科流程', '特殊情形'
-    ];
+    const CATEGORY_ORDER = ['基本技能', '呼吸道管理', '呼吸管理', '現場處置', '外科器材運用', '運送患者及搬運', '內科器材運用', '內外科流程', '特殊情形'];
 
     createApp({
         setup() {
@@ -334,14 +549,40 @@
             const isLoading = ref(true);
             const isSubmitting = ref(false);
             
-            // 彈窗狀態
+            const isInstructorMode = ref(false);
+            const isLoginModalOpen = ref(false);
+            const loginForm = ref({ name: '', password: '' });
+            const currentInstructorName = ref('');
+
+            const isEditorOpen = ref(false);
+            const editorMode = ref('list');
+            const isEditorSaving = ref(false);
+            const editForm = ref({
+                originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', steps: []
+            });
+
             const isMainModalOpen = ref(false);
             const activeSubModal = ref(null); 
 
-            const instructorName = ref('劉奕昕');
             const selectedStudent = ref('訪客');
+            const usersList = ref([]);
             
-            const usersList = ref([{ uid: 'guest', name: '訪客' }]);
+            // ★ 超強容錯的教官判斷邏輯
+            const instructorsList = computed(() => {
+                return usersList.value.filter(u => {
+                    const r = String(u.role || '').toLowerCase();
+                    return r === 'instructor' || r.includes('教官') || r === 'admin' || r === '幹部';
+                });
+            });
+            
+            const studentsList = computed(() => {
+                const students = usersList.value.filter(u => {
+                    const r = String(u.role || '').toLowerCase();
+                    return !(r === 'instructor' || r.includes('教官') || r === 'admin' || r === '幹部');
+                });
+                return students.length > 0 ? students : [{ uid: 'guest', name: '訪客' }];
+            });
+
             const rawQuestions = ref([]);
             const studentRecords = ref([]);
 
@@ -349,32 +590,59 @@
             const itemSections = ref([]); 
             const gradingState = ref([]); 
             const evalRemarks = ref('');
-            const showEquipment = ref(false); // 控制器材展開
+            const showEquipment = ref(false);
+
+            const toast = ref({ show: false, msg: '', icon: '', color: '' });
+            const showToast = (msg, type = 'info') => {
+                toast.value.msg = msg;
+                if(type === 'success') { toast.value.icon = 'fa-solid fa-circle-check'; toast.value.color = '#34d399'; }
+                else if(type === 'warning') { toast.value.icon = 'fa-solid fa-triangle-exclamation'; toast.value.color = '#fbbf24'; }
+                else { toast.value.icon = 'fa-solid fa-info-circle'; toast.value.color = '#60a5fa'; }
+                toast.value.show = true;
+                setTimeout(() => { toast.value.show = false; }, 2500);
+            };
+
+            const appConfirm = ref({ show: false, title: '', msg: '', onConfirm: null });
+            const showAppConfirm = (title, msg, onConfirmCallback) => {
+                appConfirm.value = { 
+                    show: true, title, msg, 
+                    onConfirm: () => {
+                        appConfirm.value.show = false;
+                        if(onConfirmCallback) onConfirmCallback();
+                    }
+                };
+            };
+
+            const formatTime = (isoString) => {
+                if (!isoString) return '';
+                const d = new Date(isoString);
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            };
 
             const fetchData = async () => {
                 try {
-                    if (usersList.value.length === 1) {
-                        const uSnap = await getDocs(collection(db, "passport_users"));
-                        const users = uSnap.docs.map(d => d.data());
-                        if (users.length > 0) {
-                            usersList.value = users;
-                            selectedStudent.value = users[0].name; 
-                        }
+                    const uSnap = await getDocs(collection(db, "passport_users"));
+                    usersList.value = uSnap.docs.map(d => d.data());
+                    
+                    if (studentsList.value.length > 0) {
+                        selectedStudent.value = studentsList.value[0].name; 
                     }
-                    if (rawQuestions.value.length === 0) {
-                        const qSnap = await getDocs(collection(db, "passport_questions"));
-                        rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    }
+                    await fetchQuestions();
                 } catch (error) {
-                    console.error("讀取資料庫失敗:", error);
+                    console.error("讀取失敗:", error);
                 }
+            };
+
+            const fetchQuestions = async () => {
+                const qSnap = await getDocs(collection(db, "passport_questions"));
+                rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             };
 
             watch(selectedStudent, (newName) => {
                 if (!newName) return;
                 isLoading.value = true;
                 const rQuery = query(collection(db, "passport_records"), where("userName", "==", newName));
-                
                 onSnapshot(rQuery, (snap) => {
                     studentRecords.value = snap.docs.map(d => d.data());
                     isLoading.value = false;
@@ -383,17 +651,44 @@
 
             onMounted(() => { fetchData(); });
 
+            const handleLogin = () => {
+                const user = instructorsList.value.find(u => u.name === loginForm.value.name);
+                if (user && user.password === loginForm.value.password) {
+                    isInstructorMode.value = true;
+                    currentInstructorName.value = user.name;
+                    isLoginModalOpen.value = false;
+                    loginForm.value.password = ''; 
+                    showToast("教官登入成功！已解鎖權限。", "success");
+                } else {
+                    showToast("登入失敗：密碼錯誤。", "warning");
+                }
+            };
+
+            const handleLogout = () => {
+                showAppConfirm('確認登出', '確定要退出教官模式嗎？', () => {
+                    isInstructorMode.value = false;
+                    currentInstructorName.value = '';
+                    isEditorOpen.value = false;
+                    showToast("已退出教官模式。", "info");
+                });
+            };
+
+            const handleItemClick = (item) => {
+                if (isInstructorMode.value) {
+                    openMainModal(item);
+                } else {
+                    showToast("學員模式僅能查看大標題，請由教官登入以進行評核。", "warning");
+                }
+            };
+
             const displayCategories = computed(() => {
                 const groups = {};
                 rawQuestions.value.forEach(q => {
                     const catName = q.category;
-                    if (!groups[catName]) {
-                        groups[catName] = { id: catName, name: catName, icon: q.icon || 'fa-clipboard-list', locked: q.locked || false, items: [], total: 0, completed: 0 };
-                    }
+                    if (!groups[catName]) { groups[catName] = { id: catName, name: catName, icon: q.icon || 'fa-clipboard-list', locked: q.locked || false, items: [], total: 0, completed: 0 }; }
                     const record = studentRecords.value.find(r => r.itemName === q.name);
                     const status = record ? record.status : 'Pending';
                     const score = record ? record.score : 0;
-
                     groups[catName].items.push({ ...q, status, score });
                     groups[catName].total++;
                     if (status === 'Pass') groups[catName].completed++;
@@ -403,9 +698,7 @@
                 catsArray.sort((a, b) => {
                     let indexA = CATEGORY_ORDER.indexOf(a.name);
                     let indexB = CATEGORY_ORDER.indexOf(b.name);
-                    if (indexA === -1) indexA = 999;
-                    if (indexB === -1) indexB = 999;
-                    return indexA - indexB;
+                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
                 });
 
                 return catsArray.map((cat, index) => {
@@ -444,21 +737,15 @@
                 }
             };
 
-            // ★ 開啟主彈窗並解析資料
             const openMainModal = (item) => {
                 activeItem.value = item;
-                showEquipment.value = false;
-                
                 const sectionsMap = {};
                 let globalIdxCounter = 0;
                 
-                // 確保把所有的步驟都裝進去，如果沒有 subItem 就用主項目名稱當分類
                 if (item.steps && Array.isArray(item.steps)) {
                     item.steps.forEach(step => {
                         const secTitle = step.subItem || item.name;
-                        if (!sectionsMap[secTitle]) {
-                            sectionsMap[secTitle] = { title: secTitle, steps: [] };
-                        }
+                        if (!sectionsMap[secTitle]) { sectionsMap[secTitle] = { title: secTitle, steps: [] }; }
                         sectionsMap[secTitle].steps.push({ ...step, globalIdx: globalIdxCounter });
                         globalIdxCounter++;
                     });
@@ -467,7 +754,6 @@
                 itemSections.value = Object.values(sectionsMap);
                 gradingState.value = new Array(globalIdxCounter).fill(null);
                 
-                // 讀取歷史成績
                 const pastRecord = studentRecords.value.find(r => r.itemName === item.name);
                 if (pastRecord && pastRecord.details) {
                     try {
@@ -482,21 +768,13 @@
                 isMainModalOpen.value = true;
             };
 
-            // ★ 開啟子彈窗 (第二層)
-            const openSubModal = (section) => {
-                activeSubModal.value = section;
-            };
+            const openSubModal = (section) => { activeSubModal.value = section; };
 
-            // 設定評分狀態
             const setStepStatus = (index, status) => {
-                if (gradingState.value[index] === status) {
-                    gradingState.value[index] = null;
-                } else {
-                    gradingState.value[index] = status;
-                }
+                if (gradingState.value[index] === status) gradingState.value[index] = null;
+                else gradingState.value[index] = status;
             };
 
-            // 計算分數
             const liveScore = computed(() => {
                 const total = gradingState.value.length;
                 if (total === 0) return 100;
@@ -504,17 +782,28 @@
                 return Math.round((passed / total) * 100);
             });
 
-            // 判斷左方指示條顏色
             const getSectionBarColor = (section) => {
                 if (!section.steps || section.steps.length === 0) return 'bg-slate-200';
                 const statuses = section.steps.map(s => gradingState.value[s.globalIdx]);
-                // 如果有 null 或是混在一起的，依邏輯處理。這裡採用：只要有一個錯就紅，全對才綠，其他灰。
                 if (statuses.includes(false)) return 'bg-rose-500';
                 if (statuses.every(s => s === true)) return 'bg-emerald-500';
                 return 'bg-slate-200';
             };
 
-            // 提交成績
+            const isSectionCompleted = (section) => {
+                if (!section.steps || section.steps.length === 0) return false;
+                return section.steps.every(s => gradingState.value[s.globalIdx] === true);
+            };
+
+            const activeItemHistory = computed(() => {
+                if (!activeItem.value) return [];
+                const record = studentRecords.value.find(r => r.itemName === activeItem.value.name);
+                if (record && record.history && Array.isArray(record.history)) {
+                    return [...record.history].reverse();
+                }
+                return [];
+            });
+
             const submitGrade = async () => {
                 if (!activeItem.value || isSubmitting.value) return;
                 isSubmitting.value = true;
@@ -526,34 +815,101 @@
                 const finalScore = liveScore.value;
                 const finalStatus = finalScore >= 95 ? 'Pass' : 'Fail';
                 const detailsArray = gradingState.value.map(val => ({ pass: val }));
+                
+                const pastRecord = studentRecords.value.find(r => r.itemName === itemName);
+                let historyArray = pastRecord && pastRecord.history ? [...pastRecord.history] : [];
+                
+                historyArray.push({
+                    status: finalStatus,
+                    score: finalScore,
+                    instructor: currentInstructorName.value,
+                    timestamp: new Date().toISOString()
+                });
 
                 try {
                     await setDoc(doc(db, "passport_records", docId), {
-                        userName: userName,
-                        itemName: itemName,
-                        status: finalStatus,
-                        score: finalScore,
-                        instructor: instructorName.value,
-                        remarks: evalRemarks.value,
-                        details: JSON.stringify(detailsArray),
-                        timestamp: new Date().toISOString()
+                        userName: userName, itemName: itemName, status: finalStatus, score: finalScore,
+                        instructor: currentInstructorName.value, remarks: evalRemarks.value,
+                        details: JSON.stringify(detailsArray), history: historyArray, timestamp: new Date().toISOString()
                     });
-                    
                     isMainModalOpen.value = false;
+                    showToast("✅ 成績儲存成功！", "success");
                 } catch (error) {
-                    alert("❌ 儲存失敗: " + error.message);
+                    showToast("❌ 儲存失敗: " + error.message, "warning");
                 } finally {
                     isSubmitting.value = false;
                 }
             };
 
+            const openEditorList = () => { editorMode.value = 'list'; isEditorOpen.value = true; };
+            const closeEditor = () => { isEditorOpen.value = false; };
+
+            const createNewItem = () => {
+                editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', steps: [{ subItem: '', text: '' }] };
+                editorMode.value = 'edit';
+            };
+
+            const editItem = (item) => {
+                editForm.value = JSON.parse(JSON.stringify(item));
+                editForm.value.originalDocId = item.id; 
+                if (!editForm.value.steps) editForm.value.steps = [];
+                editorMode.value = 'edit';
+            };
+
+            const addStep = () => { editForm.value.steps.push({ subItem: '', text: '' }); };
+            const removeStep = (idx) => { editForm.value.steps.splice(idx, 1); };
+
+            const saveItem = async () => {
+                const f = editForm.value;
+                if (!f.category || !f.name) { showToast("請填寫大類別與項目名稱", "warning"); return; }
+                
+                isEditorSaving.value = true;
+                const newDocId = `${f.category}_${f.name}`;
+
+                try {
+                    if (f.originalDocId && f.originalDocId !== newDocId) {
+                        await deleteDoc(doc(db, "passport_questions", f.originalDocId));
+                    }
+                    const dataToSave = {
+                        category: f.category, name: f.name, icon: f.icon || 'fa-clipboard-list', locked: f.locked || false,
+                        equipment: f.equipment || '', steps: f.steps.filter(s => s.text.trim() !== '')
+                    };
+
+                    await setDoc(doc(db, "passport_questions", newDocId), dataToSave);
+                    showToast("✅ 題目儲存成功！", "success");
+                    await fetchQuestions();
+                    editorMode.value = 'list';
+                } catch (error) {
+                    showToast("❌ 儲存失敗：" + error.message, "warning");
+                } finally {
+                    isEditorSaving.value = false;
+                }
+            };
+
+            const deleteItem = (item) => {
+                showAppConfirm('確認刪除', `確定要永久刪除「${item.name}」嗎？這個動作無法復原！`, async () => {
+                    try {
+                        await deleteDoc(doc(db, "passport_questions", item.id));
+                        showToast(`已刪除「${item.name}」`, "success");
+                        await fetchQuestions();
+                    } catch (error) {
+                        showToast("❌ 刪除失敗：" + error.message, "warning");
+                    }
+                });
+            };
+
             return {
-                isLoading, isSubmitting, isMainModalOpen, activeSubModal,
+                isLoading, isSubmitting, toast, appConfirm,
+                isInstructorMode, isLoginModalOpen, currentInstructorName, handleLogin, handleLogout, handleItemClick,
+                isMainModalOpen, activeSubModal,
                 slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll,
-                instructorName, selectedStudent, usersList,
+                selectedStudent, studentsList, instructorsList,
                 displayCategories, totalProgress,
-                openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, showEquipment,
-                gradingState, setStepStatus, liveScore, evalRemarks, submitGrade
+                openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment,
+                gradingState, setStepStatus, liveScore, evalRemarks, submitGrade,
+                activeItemHistory, formatTime,
+                isEditorOpen, editorMode, isEditorSaving, editForm,
+                openEditorList, closeEditor, createNewItem, editItem, addStep, removeStep, saveItem, deleteItem
             };
         }
     }).mount('#app');
