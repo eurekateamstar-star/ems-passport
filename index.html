@@ -13,12 +13,10 @@
     <style>
         :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); --header-bg: #f1f5f9; }
         html, body { margin: 0; padding: 0; background: var(--header-bg); color: #1e293b; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif; height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
-        
         #app { width:100%; height:100dvh; max-width:450px; margin:0 auto; display:flex; flex-direction:column; position:relative; background:#f1f5f9; box-shadow:0 0 50px rgba(0,0,0,.08); }
         .font-num { font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.02em; }
         .list-card { background:#fff; border:1px solid #e2e8f0; border-radius:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,.02); overflow:hidden; }
         
-        /* 橫向導覽與左右滑動 */
         .tabs-section { flex-shrink:0; background:#f1f5f9; z-index:30; }
         .tabs-scroll-container { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 4px 20px 8px 20px; gap: 16px; }
         .tabs-scroll-container::-webkit-scrollbar { display: none; }
@@ -32,13 +30,11 @@
 
         .passport-gradient { background: linear-gradient(to bottom right, #0ea5e9, #10b981) !important; color: white !important; }
 
-        /* Bottom Sheet 彈窗 (全域確認與題庫管理) */
         .bottom-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .bottom-sheet-overlay.active { opacity: 1; pointer-events: auto; }
         .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top-left-radius: 32px; border-top-right-radius: 32px; z-index: 1001; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; padding: 24px; padding-bottom: calc(24px + var(--safe-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,0.15); }
         .bottom-sheet.active { transform: translateY(0); }
 
-        /* 置中主彈窗 (第一層：小項列表) */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .centered-modal { background: #f8fafc; width: 100%; max-width: 420px; max-height: 90dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -46,7 +42,6 @@
         .modal-body { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
         .modal-body::-webkit-scrollbar { display: none; }
 
-        /* 子彈窗 (第二層：評分對話框) */
         .sub-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
         .sub-modal-overlay.active { opacity: 1; pointer-events: auto; }
         .sub-centered-modal { background: #ffffff; width: 100%; max-width: 380px; max-height: 85dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -57,6 +52,7 @@
         /* 全螢幕彈窗 (題庫編輯器專用) */
         .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; }
         .full-screen-modal.active { transform: translateY(0); }
+
         ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
@@ -72,7 +68,7 @@
         </div>
     </div>
 
-    <!-- 全域確認彈窗 -->
+    <!-- 全域 確認彈窗 -->
     <div class="bottom-sheet-overlay" :class="{ active: appConfirm.show }" @click="appConfirm.show = false"></div>
     <div class="bottom-sheet" :class="{ active: appConfirm.show }">
         <div class="text-center py-4">
@@ -231,11 +227,12 @@
         </button>
     </div>
 
+
     <!-- ============================================== -->
-    <!-- 全新功能：題庫編輯管理中心 (In-App CMS) -->
+    <!-- ★★★ 全新功能：題庫編輯管理中心 (In-App CMS) ★★★ -->
     <!-- ============================================== -->
     <div class="full-screen-modal" :class="{ active: isEditorOpen }">
-        <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-3 px-5 flex justify-between items-center bg-slate-800 text-white shrink-0 shadow-md">
+        <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-3 px-5 flex justify-between items-center bg-slate-800 text-white shrink-0 shadow-md z-10">
             <div>
                 <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-0.5">Management</p>
                 <h1 class="text-xl font-black">題庫管理中心</h1>
@@ -245,12 +242,13 @@
             </button>
         </header>
 
+        <!-- Mode 1: 題庫列表 -->
         <div v-if="editorMode === 'list'" class="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
             <button @click="createNewItem" class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform flex justify-center items-center gap-2">
                 <i class="fa-solid fa-plus"></i> 新增考核項目
             </button>
 
-            <div v-for="cat in displayCategories" :key="'edit-'+cat.id" class="space-y-3">
+            <div v-for="cat in displayCategories" :key="'edit-cat-'+cat.id" class="space-y-3">
                 <h3 class="text-sm font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 pb-1 ml-1">{{ cat.name }}</h3>
                 <div v-for="item in cat.items" :key="'edit-item-'+item.id" class="list-card p-3 flex justify-between items-center bg-white shadow-sm">
                     <span class="font-bold text-[14px] text-slate-700 truncate flex-1 pr-2">{{ item.name }}</span>
@@ -266,64 +264,116 @@
             </div>
         </div>
 
-        <div v-if="editorMode === 'edit'" class="flex-1 overflow-y-auto p-5 pb-32 space-y-5">
+        <!-- Mode 2: 題庫編輯器 (表單) -->
+        <div v-if="editorMode === 'edit'" class="flex-1 overflow-y-auto p-4 pb-32 space-y-4">
+            
+            <!-- 區塊1: 基本設定 -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <div class="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
                     <i class="fa-solid fa-cube text-blue-500"></i>
                     <span class="font-black text-sm text-slate-700">基本設定</span>
                 </div>
+                
+                <!-- 大類別下拉選單 + 自訂新增 -->
                 <div class="space-y-1">
                     <label class="text-[11px] font-black text-slate-500">大類別 (Category)</label>
-                    <input v-model="editForm.category" type="text" placeholder="例如：基本技能" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
+                    <div class="relative">
+                        <select v-model="editForm.category" @change="checkNewCategory" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none appearance-none">
+                            <option value="" disabled>請選擇類別...</option>
+                            <option v-for="c in existingCategories" :key="c" :value="c">{{ c }}</option>
+                            <option value="NEW_CATEGORY">➕ 新增自訂類別...</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+                    </div>
+                    <input v-if="isNewCategory" v-model="newCategoryName" type="text" placeholder="輸入新的大類別名稱" class="w-full bg-white border border-blue-300 rounded-[10px] px-3 py-2.5 text-sm font-bold text-blue-800 outline-none mt-2 shadow-sm focus:ring-2 focus:ring-blue-100">
                 </div>
+
                 <div class="space-y-1">
                     <label class="text-[11px] font-black text-slate-500">項目名稱 (Item Name)</label>
                     <input v-model="editForm.name" type="text" placeholder="例如：救護車點班" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="space-y-1">
-                        <label class="text-[11px] font-black text-slate-500">圖示 (Icon)</label>
-                        <input v-model="editForm.icon" type="text" placeholder="fa-ambulance" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[11px] font-black text-slate-500">狀態</label>
-                        <select v-model="editForm.locked" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none">
-                            <option :value="false">開啟使用</option>
-                            <option :value="true">鎖定隱藏</option>
-                        </select>
+
+                <!-- 視覺化 Icon 選擇器 -->
+                <div class="space-y-1 border-t border-slate-100 pt-3 mt-1">
+                    <label class="text-[11px] font-black text-slate-500 flex justify-between">
+                        <span>圖示 (Icon)</span>
+                        <span class="text-blue-500">{{ editForm.icon }}</span>
+                    </label>
+                    <div class="grid grid-cols-6 gap-2 mt-2">
+                        <div v-for="ico in iconList" :key="ico" 
+                             @click="editForm.icon = ico"
+                             class="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all border"
+                             :class="editForm.icon === ico ? 'bg-blue-600 text-white border-blue-700 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'">
+                            <i :class="['fa-solid', ico]" class="text-lg"></i>
+                        </div>
                     </div>
                 </div>
+
+                <div class="space-y-1 border-t border-slate-100 pt-3 mt-1">
+                    <label class="text-[11px] font-black text-slate-500">狀態</label>
+                    <select v-model="editForm.locked" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none">
+                        <option :value="false">🟢 開啟使用 (學員可見)</option>
+                        <option :value="true">🔒 鎖定隱藏 (敬請期待)</option>
+                    </select>
+                </div>
+                
                 <div class="space-y-1">
                     <label class="text-[11px] font-black text-slate-500">準備器材 (選填)</label>
                     <textarea v-model="editForm.equipment" placeholder="請輸入器材清單..." class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none h-20"></textarea>
                 </div>
             </div>
 
+            <!-- 區塊2: 評分步驟設定 (分組式結構) -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-2">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-list-check text-emerald-500"></i>
                         <span class="font-black text-sm text-slate-700">評分步驟設定</span>
                     </div>
-                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">共 {{ editForm.steps.length }} 步</span>
                 </div>
 
-                <div v-for="(step, idx) in editForm.steps" :key="idx" class="relative p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <button @click="removeStep(idx)" class="absolute top-2 right-2 w-6 h-6 bg-rose-100 text-rose-500 rounded flex items-center justify-center active:scale-90">
-                        <i class="fa-solid fa-xmark text-xs"></i>
-                    </button>
-                    <div class="space-y-1 pr-8">
-                        <label class="text-[10px] font-black text-slate-500">小分類標題 (Sub Item)</label>
-                        <input v-model="step.subItem" type="text" placeholder="例如：頭部頸椎限制" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] font-bold text-slate-800 outline-none">
+                <!-- 依照小分類 (SubItem) 迴圈產生的群組 -->
+                <div v-for="(group, gIdx) in editForm.groupedSections" :key="'group-'+gIdx" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3 relative">
+                    
+                    <!-- 群組排序與刪除按鈕 -->
+                    <div class="absolute -right-2 -top-2 flex gap-1 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
+                        <button @click="moveGroup(gIdx, -1)" :disabled="gIdx === 0" class="w-6 h-6 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-arrow-up text-xs"></i></button>
+                        <button @click="moveGroup(gIdx, 1)" :disabled="gIdx === editForm.groupedSections.length - 1" class="w-6 h-6 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-arrow-down text-xs"></i></button>
+                        <div class="w-px h-4 bg-slate-200 my-auto mx-0.5"></div>
+                        <button @click="removeGroup(gIdx)" class="w-6 h-6 rounded flex items-center justify-center text-rose-500 active:bg-rose-50"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-black text-slate-500">操作內容 (Standard)</label>
-                        <textarea v-model="step.text" placeholder="輸入具體動作..." class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] font-bold text-slate-800 outline-none h-16"></textarea>
+
+                    <div class="space-y-1 pt-1 pr-20">
+                        <label class="text-[10px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">小分類標題 (Sub Item)</label>
+                        <input v-model="group.subItem" type="text" placeholder="例如：頭部頸椎限制" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[14px] font-black text-slate-800 outline-none focus:border-emerald-400 mt-1">
+                    </div>
+
+                    <!-- 群組內的步驟 (Steps) -->
+                    <div class="space-y-2 border-t border-slate-200/60 pt-3">
+                        <div v-for="(txt, tIdx) in group.texts" :key="'text-'+gIdx+'-'+tIdx" class="flex gap-2 items-start">
+                            <!-- 步驟序號 -->
+                            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 mt-1.5 font-num font-black text-[10px]">{{ tIdx + 1 }}</div>
+                            <!-- 內容輸入框 -->
+                            <textarea v-model="group.texts[tIdx]" placeholder="輸入具體動作..." class="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] font-bold text-slate-700 outline-none h-16 focus:border-blue-400 leading-snug"></textarea>
+                            
+                            <!-- 步驟上下移與刪除 -->
+                            <div class="flex flex-col gap-1 shrink-0">
+                                <button @click="moveStep(group, tIdx, -1)" :disabled="tIdx === 0" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-caret-up"></i></button>
+                                <button @click="moveStep(group, tIdx, 1)" :disabled="tIdx === group.texts.length - 1" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-caret-down"></i></button>
+                                <button @click="removeStep(group, tIdx)" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-rose-400 active:bg-rose-50 mt-1"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+                        
+                        <!-- 在此群組內新增步驟 -->
+                        <button @click="addTextToGroup(group)" class="w-full py-2 mt-2 rounded-lg border border-dashed border-blue-300 text-blue-500 bg-blue-50/50 font-black text-xs active:scale-95 transition-transform flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-plus"></i> 新增步驟
+                        </button>
                     </div>
                 </div>
 
-                <button @click="addStep" class="w-full py-3 rounded-xl border border-dashed border-emerald-400 text-emerald-600 bg-emerald-50 font-black text-sm active:scale-95 transition-transform">
-                    <i class="fa-solid fa-plus mr-1"></i> 新增一個步驟
+                <!-- 新增一個大群組 -->
+                <button @click="addGroup" class="w-full py-3.5 rounded-xl bg-slate-800 text-white font-black text-sm active:scale-95 transition-transform shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-layer-group"></i> 新增下一個小分類
                 </button>
             </div>
         </div>
@@ -338,9 +388,8 @@
         </div>
     </div>
 
-    <!-- ============================================== -->
+
     <!-- 教官登入彈窗 -->
-    <!-- ============================================== -->
     <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="isLoginModalOpen = false">
         <div class="centered-modal bg-white">
             <div class="px-5 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
@@ -353,7 +402,6 @@
                 <div class="space-y-1">
                     <label class="text-[11px] font-black text-slate-500 pl-1">選擇教官姓名</label>
                     <div class="relative">
-                        <!-- ★ 修正點：這裡綁定的是 InstructorsList -->
                         <select v-model="loginForm.name" class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[14px] font-bold text-slate-800 outline-none appearance-none">
                             <option value="" disabled>請選擇...</option>
                             <option v-for="inst in instructorsList" :key="inst.name" :value="inst.name">{{ inst.name }}</option>
@@ -372,9 +420,7 @@
         </div>
     </div>
 
-    <!-- ============================================== -->
     <!-- 第一層：主彈窗 (列出小項與歷史紀錄) -->
-    <!-- ============================================== -->
     <div class="modal-overlay" :class="{ active: isMainModalOpen }" @click.self="isMainModalOpen = false">
         <div class="centered-modal">
             
@@ -415,7 +461,7 @@
                 <div v-if="activeItemHistory.length > 0" class="border-t border-slate-200 pt-4 mt-2">
                     <h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">歷史考核紀錄</h5>
                     <div class="space-y-2">
-                        <div v-for="(log, idx) in activeItemHistory" :key="idx" 
+                        <div v-for="(log, idx) in activeItemHistory" :key="'log-'+idx" 
                              class="flex justify-between items-center p-3 rounded-xl border shadow-sm bg-white"
                              :class="log.status === 'Pass' ? 'border-emerald-100' : 'border-rose-100'">
                             <div class="flex items-center gap-3">
@@ -468,9 +514,7 @@
         </div>
     </div>
 
-    <!-- ============================================== -->
     <!-- 第二層：子彈窗 (細項評分對話框) -->
-    <!-- ============================================== -->
     <div class="sub-modal-overlay" :class="{ active: activeSubModal !== null }" @click.self="activeSubModal = null">
         <div class="sub-centered-modal">
             
@@ -479,7 +523,7 @@
             </div>
             
             <div class="sub-modal-body space-y-4 bg-white">
-                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="step.globalIdx" class="space-y-3 border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
+                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="'substep-'+step.globalIdx" class="space-y-3 border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
                     
                     <div class="flex items-start gap-3">
                         <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]">
@@ -540,6 +584,13 @@
 
     const CATEGORY_ORDER = ['基本技能', '呼吸道管理', '呼吸管理', '現場處置', '外科器材運用', '運送患者及搬運', '內科器材運用', '內外科流程', '特殊情形'];
 
+    // 提供給編輯器的可用 Icon 列表
+    const ICON_LIST = [
+        'fa-truck-medical', 'fa-lungs', 'fa-mask-ventilator', 'fa-person-falling-burst', 
+        'fa-kit-medical', 'fa-wheelchair', 'fa-heart-pulse', 'fa-syringe', 
+        'fa-stethoscope', 'fa-band-aid', 'fa-bone', 'fa-user-doctor'
+    ];
+
     createApp({
         setup() {
             const slider = ref(null);
@@ -554,20 +605,31 @@
             const loginForm = ref({ name: '', password: '' });
             const currentInstructorName = ref('');
 
+            // ★ 題庫編輯器專用狀態
             const isEditorOpen = ref(false);
-            const editorMode = ref('list');
+            const editorMode = ref('list'); // 'list' 或 'edit'
             const isEditorSaving = ref(false);
+            const isNewCategory = ref(false);
+            const newCategoryName = ref('');
+            const iconList = ref(ICON_LIST);
+            
             const editForm = ref({
-                originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', steps: []
+                originalDocId: null,
+                category: '',
+                name: '',
+                icon: 'fa-clipboard-list',
+                locked: false,
+                equipment: '',
+                groupedSections: [] // 新的編輯器資料結構： [{ subItem: '名稱', texts: ['步驟1', '步驟2'] }]
             });
 
             const isMainModalOpen = ref(false);
             const activeSubModal = ref(null); 
 
+            const instructorName = ref('');
             const selectedStudent = ref('訪客');
-            const usersList = ref([]);
             
-            // ★ 超強容錯的教官判斷邏輯
+            const usersList = ref([]);
             const instructorsList = computed(() => {
                 return usersList.value.filter(u => {
                     const r = String(u.role || '').toLowerCase();
@@ -668,7 +730,7 @@
                 showAppConfirm('確認登出', '確定要退出教官模式嗎？', () => {
                     isInstructorMode.value = false;
                     currentInstructorName.value = '';
-                    isEditorOpen.value = false;
+                    isEditorOpen.value = false; 
                     showToast("已退出教官模式。", "info");
                 });
             };
@@ -705,6 +767,11 @@
                     const theme = colorThemes[index % colorThemes.length];
                     return { ...cat, activeClass: `${theme.bg} text-white ${theme.border}`, textColor: theme.text };
                 });
+            });
+
+            // 提供給編輯器的大類別下拉選單選項
+            const existingCategories = computed(() => {
+                return displayCategories.value.map(c => c.name);
             });
 
             const totalProgress = computed(() => {
@@ -841,38 +908,149 @@
                 }
             };
 
-            const openEditorList = () => { editorMode.value = 'list'; isEditorOpen.value = true; };
+            // ==============================================
+            // ★ 題庫編輯器專用邏輯
+            // ==============================================
+            const openEditorList = () => { 
+                editorMode.value = 'list'; 
+                isEditorOpen.value = true; 
+            };
             const closeEditor = () => { isEditorOpen.value = false; };
 
+            const checkNewCategory = () => {
+                isNewCategory.value = (editForm.value.category === 'NEW_CATEGORY');
+                if (!isNewCategory.value) newCategoryName.value = '';
+            };
+
             const createNewItem = () => {
-                editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', steps: [{ subItem: '', text: '' }] };
+                editForm.value = { 
+                    originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', 
+                    groupedSections: [{ subItem: '', texts: [''] }] 
+                };
+                isNewCategory.value = false;
+                newCategoryName.value = '';
                 editorMode.value = 'edit';
             };
 
             const editItem = (item) => {
-                editForm.value = JSON.parse(JSON.stringify(item));
-                editForm.value.originalDocId = item.id; 
-                if (!editForm.value.steps) editForm.value.steps = [];
+                // 將 Firebase 扁平的 steps 陣列，轉換回編輯器需要的分組格式
+                const grouped = [];
+                let currentGroup = null;
+                let currentSub = null;
+                
+                if (item.steps && Array.isArray(item.steps)) {
+                    item.steps.forEach(s => {
+                        // 處理 Excel 舊資料可能沒有 subItem 的情況
+                        const sName = s.subItem || item.name; 
+                        
+                        if (sName !== currentSub || !currentGroup) {
+                            currentGroup = { subItem: sName, texts: [s.text] };
+                            grouped.push(currentGroup);
+                            currentSub = sName;
+                        } else {
+                            currentGroup.texts.push(s.text);
+                        }
+                    });
+                }
+                
+                editForm.value = {
+                    originalDocId: item.id,
+                    category: item.category,
+                    name: item.name,
+                    icon: item.icon || 'fa-clipboard-list',
+                    locked: item.locked || false,
+                    equipment: item.equipment || '',
+                    groupedSections: grouped.length ? grouped : [{ subItem: item.name, texts: [''] }]
+                };
+                
+                isNewCategory.value = false;
+                newCategoryName.value = '';
                 editorMode.value = 'edit';
             };
 
-            const addStep = () => { editForm.value.steps.push({ subItem: '', text: '' }); };
-            const removeStep = (idx) => { editForm.value.steps.splice(idx, 1); };
+            // 新增一個小分類 (Group)
+            const addGroup = () => {
+                editForm.value.groupedSections.push({ subItem: '', texts: [''] });
+            };
+
+            // 在特定小分類內新增一個步驟
+            const addTextToGroup = (group) => {
+                group.texts.push('');
+            };
+
+            // 刪除特定小分類 (Group)
+            const removeGroup = (idx) => {
+                if (confirm("確定要刪除這個小分類與裡面的所有步驟嗎？")) {
+                    editForm.value.groupedSections.splice(idx, 1);
+                }
+            };
+
+            // 刪除特定步驟
+            const removeStep = (group, txtIdx) => {
+                group.texts.splice(txtIdx, 1);
+                // 如果刪到沒步驟了，自動補一個空的，避免 UI 壞掉
+                if (group.texts.length === 0) group.texts.push('');
+            };
+
+            // 移動群組順序
+            const moveGroup = (idx, direction) => {
+                const targetIdx = idx + direction;
+                if (targetIdx >= 0 && targetIdx < editForm.value.groupedSections.length) {
+                    const temp = editForm.value.groupedSections[idx];
+                    editForm.value.groupedSections[idx] = editForm.value.groupedSections[targetIdx];
+                    editForm.value.groupedSections[targetIdx] = temp;
+                }
+            };
+
+            // 移動步驟順序
+            const moveStep = (group, idx, direction) => {
+                const targetIdx = idx + direction;
+                if (targetIdx >= 0 && targetIdx < group.texts.length) {
+                    const temp = group.texts[idx];
+                    group.texts[idx] = group.texts[targetIdx];
+                    group.texts[targetIdx] = temp;
+                }
+            };
 
             const saveItem = async () => {
                 const f = editForm.value;
-                if (!f.category || !f.name) { showToast("請填寫大類別與項目名稱", "warning"); return; }
+                const finalCategory = isNewCategory.value ? newCategoryName.value.trim() : f.category;
+
+                if (!finalCategory || !f.name) { 
+                    showToast("請填寫大類別與項目名稱", "warning"); 
+                    return; 
+                }
                 
                 isEditorSaving.value = true;
-                const newDocId = `${f.category}_${f.name}`;
+                const newDocId = `${finalCategory}_${f.name}`;
+
+                // 將編輯器的分組結構，轉回 Firebase 需要的扁平 steps 陣列
+                const finalSteps = [];
+                f.groupedSections.forEach(g => {
+                    g.texts.forEach(t => {
+                        if (t.trim() !== '') {
+                            // 如果小分類沒寫，預設用項目名稱
+                            finalSteps.push({ 
+                                subItem: g.subItem.trim() || f.name, 
+                                text: t.trim() 
+                            });
+                        }
+                    });
+                });
 
                 try {
+                    // 如果改了分類或名稱導致 ID 改變，要把舊的刪掉
                     if (f.originalDocId && f.originalDocId !== newDocId) {
                         await deleteDoc(doc(db, "passport_questions", f.originalDocId));
                     }
+
                     const dataToSave = {
-                        category: f.category, name: f.name, icon: f.icon || 'fa-clipboard-list', locked: f.locked || false,
-                        equipment: f.equipment || '', steps: f.steps.filter(s => s.text.trim() !== '')
+                        category: finalCategory, 
+                        name: f.name, 
+                        icon: f.icon || 'fa-clipboard-list', 
+                        locked: f.locked || false,
+                        equipment: f.equipment || '', 
+                        steps: finalSteps // 存入轉換後的平坦陣列
                     };
 
                     await setDoc(doc(db, "passport_questions", newDocId), dataToSave);
@@ -900,16 +1078,16 @@
 
             return {
                 isLoading, isSubmitting, toast, appConfirm,
-                isInstructorMode, isLoginModalOpen, currentInstructorName, handleLogin, handleLogout, handleItemClick,
+                isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick,
                 isMainModalOpen, activeSubModal,
                 slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll,
                 selectedStudent, studentsList, instructorsList,
-                displayCategories, totalProgress,
+                displayCategories, existingCategories, totalProgress,
                 openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment,
                 gradingState, setStepStatus, liveScore, evalRemarks, submitGrade,
                 activeItemHistory, formatTime,
-                isEditorOpen, editorMode, isEditorSaving, editForm,
-                openEditorList, closeEditor, createNewItem, editItem, addStep, removeStep, saveItem, deleteItem
+                isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory,
+                openEditorList, closeEditor, createNewItem, editItem, addGroup, addTextToGroup, removeGroup, removeStep, moveGroup, moveStep, saveItem, deleteItem
             };
         }
     }).mount('#app');
