@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>海山救護 - 考核系統</title>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); --header-bg: #f1f5f9; }
+        
+        html, body { margin: 0; padding: 0; background: var(--header-bg); color: #1e293b; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif; height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+        
+        #app { width:100%; height:100dvh; max-width:450px; margin:0 auto; display:flex; flex-direction:column; position:relative; background:#f1f5f9; box-shadow:0 0 50px rgba(0,0,0,.08); }
+        .font-num { font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+        .list-card { background:#fff; border:1px solid #e2e8f0; border-radius:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,.02); overflow:hidden; }
+        
+        /* 橫向滑動 Tabs */
+        .tabs-section { flex-shrink:0; background:#f1f5f9; z-index:30; }
+        .tabs-scroll-container { display: flex; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 4px 20px 8px 20px; gap: 16px; }
+        .tabs-scroll-container::-webkit-scrollbar { display: none; }
+        .tab-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        
+        /* 左右滑動內容區 */
+        .slides-section { flex:1; overflow:hidden; min-height:0; display:flex; flex-direction:column; }
+        .content-slider { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; width:100%; height:100%; scroll-behavior: smooth; }
+        .content-slider::-webkit-scrollbar { display:none; }
+        .slide-page { flex:0 0 100%; width:100%; scroll-snap-align:start; padding:0 20px 40px 20px; box-sizing:border-box; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+        .slide-page::-webkit-scrollbar { display:none; }
+
+        .passport-gradient { background: linear-gradient(to bottom right, #0ea5e9, #10b981) !important; color: white !important; }
+
+        /* ==========================================
+           第一層：主彈窗 (置中、列出小項)
+           ========================================== */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .centered-modal { background: #f8fafc; width: 100%; max-width: 420px; max-height: 90dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal-overlay.active .centered-modal { transform: scale(1); }
+        .modal-body { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+        .modal-body::-webkit-scrollbar { display: none; }
+
+        /* ==========================================
+           第二層：子彈窗 (評分對話框)
+           ========================================== */
+        .sub-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .sub-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .sub-centered-modal { background: #ffffff; width: 100%; max-width: 380px; max-height: 85dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .sub-modal-overlay.active .sub-centered-modal { transform: translateY(0); }
+        .sub-modal-body { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
+        .sub-modal-body::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <!-- Header -->
+    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-between items-center bg-[#f1f5f9] shrink-0 z-50">
+        <div>
+            <p class="text-[10px] text-emerald-600 font-black tracking-widest uppercase mb-0.5">EMS Passport</p>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">海山救護</h1>
+        </div>
+        <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl">
+            <i class="fa-solid fa-circle-notch"></i>
+        </div>
+    </header>
+
+    <!-- 學員切換區 -->
+    <div class="px-5 shrink-0 z-40 bg-[#f1f5f9] pb-4 pt-2">
+        <div class="list-card p-4 shadow-sm flex items-center justify-between">
+            <div class="flex flex-col flex-1 mr-4">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-slate-400 text-[10px] font-black uppercase">切換學員 (Student)</span>
+                    <span class="px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-[10px] font-black shadow-sm">教官: {{ instructorName }}</span>
+                </div>
+                <div class="relative mt-0.5">
+                    <select v-model="selectedStudent" class="w-full bg-transparent text-lg font-black text-slate-800 outline-none appearance-none cursor-pointer">
+                        <option v-for="user in usersList" :key="user.uid" :value="user.name">{{ user.name }}</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-sm"></i>
+                </div>
+            </div>
+            <div class="text-right shrink-0">
+                <span class="block text-3xl font-black text-emerald-500 font-num leading-none">{{ totalProgress }}<span class="text-sm">%</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 橫向 Tabs -->
+    <div class="tabs-section">
+        <div class="tabs-scroll-container" ref="tabsScrollRef">
+            <div class="tab-item" @click="scrollToTab(0)">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-2 shadow-sm transition-all" 
+                     :class="activeTab === 0 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-300 border border-slate-100'">
+                    <i class="fa-solid fa-layer-group text-xl"></i>
+                </div>
+                <span class="text-[11px] font-black" :class="activeTab === 0 ? 'text-slate-800' : 'text-slate-400'">總覽</span>
+            </div>
+            <div v-for="(cat, index) in displayCategories" :key="cat.id" @click="scrollToTab(index + 1)" class="tab-item">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center mb-2 shadow-sm transition-all" 
+                     :class="activeTab === (index + 1) ? cat.activeClass : 'bg-white text-slate-300 border border-slate-100'">
+                    <i :class="['fa-solid', cat.icon]" class="text-xl"></i>
+                </div>
+                <span class="text-[11px] font-black" :class="activeTab === (index + 1) ? cat.textColor : 'text-slate-400'">{{ cat.name.substring(0, 4) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 內容區 -->
+    <div class="slides-section relative">
+        <div class="content-slider" ref="slider" @scroll="onSliderScroll">
+            
+            <!-- 九宮格總覽 -->
+            <div class="slide-page pt-2">
+                <div class="grid grid-cols-3 gap-3 pb-10">
+                    <div v-for="(cat, idx) in displayCategories" :key="cat.id" 
+                         @click="scrollToTab(idx + 1)"
+                         class="list-card p-2 py-4 flex flex-col items-center text-center relative shadow-sm cursor-pointer active:scale-95 transition-transform"
+                         :class="cat.locked ? 'opacity-40 grayscale bg-slate-50' : 'bg-white hover:bg-slate-50'">
+                        
+                        <div v-if="cat.locked" class="absolute top-2 right-2 text-slate-300 text-xs z-10"><i class="fa-solid fa-lock"></i></div>
+                        <div v-else-if="cat.completed === cat.total && cat.total > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-[10px] text-white z-10 shadow-sm border border-white font-num"><i class="fa-solid fa-check"></i></div>
+
+                        <div class="w-12 h-12 rounded-[14px] flex items-center justify-center mb-2 text-xl shadow-sm text-white border" :class="cat.activeClass"><i :class="['fa-solid', cat.icon]"></i></div>
+                        <p class="text-[12px] font-black text-slate-700 leading-tight min-h-[32px] flex items-center justify-center px-1">{{ cat.name }}</p>
+                        <p class="text-[11px] font-black mt-1 font-num" :class="cat.locked ? 'text-slate-400' : 'text-emerald-600'">{{ cat.completed }}<span class="text-[9px] text-slate-400 font-bold mx-0.5">/</span>{{ cat.total }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 各類別清單 -->
+            <div v-for="cat in displayCategories" :key="'page-'+cat.id" class="slide-page pt-2 pb-10">
+                <div class="mb-4 px-1 flex justify-between items-end">
+                    <div>
+                        <h3 class="text-xl font-black text-slate-800">{{ cat.name }}</h3>
+                        <p class="text-[10px] font-bold uppercase tracking-widest mt-1" :class="cat.textColor">MODULE ITEMS</p>
+                    </div>
+                </div>
+
+                <div v-if="cat.locked" class="flex flex-col items-center justify-center py-16 text-slate-300">
+                    <i class="fa-solid fa-lock text-4xl mb-4"></i>
+                    <p class="font-black text-sm mt-2">項目尚未解鎖</p>
+                </div>
+
+                <div v-else class="space-y-3">
+                    <div v-for="item in cat.items" :key="item.id" 
+                         @click="openMainModal(item)"
+                         class="list-card p-4 flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all bg-white">
+                        
+                        <div class="flex flex-col flex-1 pr-4">
+                            <span class="font-black text-slate-800 text-[15px]">{{ item.name }}</span>
+                            <span class="text-[10px] font-bold text-slate-400 mt-1">點擊進行考核</span>
+                        </div>
+                        
+                        <div v-if="item.status === 'Pass'" class="flex flex-col items-end">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i>
+                            <span class="text-[10px] font-bold text-emerald-600 mt-1 font-num">{{ item.score }} 分</span>
+                        </div>
+                        <div v-else-if="item.status === 'Fail'" class="flex flex-col items-end">
+                            <i class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i>
+                            <span class="text-[10px] font-bold text-rose-600 mt-1 font-num">{{ item.score }} 分</span>
+                        </div>
+                        <div v-else>
+                            <div class="w-6 h-6 rounded-full border-[2px] border-slate-200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 第一層：主彈窗 (列出所有小項) -->
+    <!-- ============================================== -->
+    <div class="modal-overlay" :class="{ active: isMainModalOpen }" @click.self="isMainModalOpen = false">
+        <div class="centered-modal">
+            
+            <div class="bg-white px-5 py-4 flex justify-between items-center shrink-0 border-b border-slate-100">
+                <h2 class="text-[20px] font-black text-slate-800 leading-tight pr-4 truncate">{{ activeItem?.name }}</h2>
+                <button @click="isMainModalOpen = false" class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 shrink-0">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="modal-body bg-slate-50 space-y-3 pt-4">
+                
+                <!-- 準備器材摺疊區 (復刻截圖) -->
+                <div v-if="activeItem?.equipment" class="mb-4">
+                    <div @click="showEquipment = !showEquipment" class="flex items-center gap-2 cursor-pointer w-fit text-emerald-600">
+                        <i class="fa-solid fa-briefcase-medical text-sm"></i>
+                        <span class="font-black text-xs">準備器材</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="{'rotate-180': showEquipment}"></i>
+                    </div>
+                    <div v-show="showEquipment" class="mt-2 p-3 bg-white rounded-xl border border-emerald-100 text-xs font-bold text-slate-600 whitespace-pre-line shadow-sm">
+                        {{ activeItem?.equipment }}
+                    </div>
+                </div>
+
+                <!-- 小項列表 (點擊開啟第二層) -->
+                <div v-for="(section, secIdx) in itemSections" :key="secIdx" 
+                     @click="openSubModal(section)"
+                     class="bg-white border border-slate-200 rounded-[14px] flex justify-between items-center cursor-pointer active:bg-slate-50 transition-colors shadow-sm relative overflow-hidden">
+                    
+                    <!-- 左側顏色指示條 -->
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 transition-colors" :class="getSectionBarColor(section)"></div>
+                    
+                    <div class="px-5 py-4 flex-1">
+                        <span class="font-bold text-[15px] text-slate-700">{{ section.title }}</span>
+                    </div>
+                    
+                    <!-- 向右箭頭 -->
+                    <div class="pr-5 text-slate-300">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部固定：算分與提交 -->
+            <div class="bg-white border-t border-slate-100 p-5 shrink-0">
+                <div class="flex justify-between items-center mb-4 px-1">
+                    <span class="text-sm font-black text-slate-500">目前得分 (95分及格)</span>
+                    <span class="text-[32px] font-black font-num transition-colors leading-none" :class="liveScore >= 95 ? 'text-emerald-600' : 'text-rose-600'">
+                        {{ liveScore }}
+                    </span>
+                </div>
+
+                <input v-model="evalRemarks" type="text" placeholder="輸入評語 (選填)..." class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[13px] font-bold focus:outline-none focus:border-emerald-500 mb-4 shadow-sm">
+
+                <button @click="submitGrade" :disabled="isSubmitting" class="w-full py-3.5 bg-[#059669] text-white rounded-[12px] font-black text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
+                    <i v-if="!isSubmitting" class="fa-solid fa-save"></i>
+                    <i v-else class="fa-solid fa-spinner fa-spin"></i>
+                    {{ isSubmitting ? '儲存中...' : '提交成績' }}
+                </button>
+                <div class="text-center mt-3 text-[10px] text-slate-400 font-bold">
+                    正在評核: <span class="font-black text-slate-600">{{ selectedStudent }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 第二層：子彈窗 (細項評分對話框，復刻第三張圖) -->
+    <!-- ============================================== -->
+    <div class="sub-modal-overlay" :class="{ active: activeSubModal !== null }" @click.self="activeSubModal = null">
+        <div class="sub-centered-modal">
+            
+            <!-- 子彈窗標題 -->
+            <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h3 class="font-black text-slate-800 text-lg">{{ activeSubModal?.title }}</h3>
+            </div>
+            
+            <!-- 評分步驟列表 -->
+            <div class="sub-modal-body space-y-4 bg-white">
+                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="step.globalIdx" class="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                    
+                    <div class="flex items-start gap-3 mb-4">
+                        <!-- 灰色圓圈數字 -->
+                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]">
+                            {{ stepIdx + 1 }}
+                        </div>
+                        <p class="text-[14px] font-bold text-slate-700 leading-relaxed pt-0.5">{{ step.text }}</p>
+                    </div>
+                    
+                    <!-- ✓ 標準正確 / X 未通過 -->
+                    <div class="flex gap-2 w-full">
+                        <button @click="setStepStatus(step.globalIdx, true)" 
+                                class="flex-1 py-2.5 rounded-xl font-black text-[13px] border transition-all active:scale-95"
+                                :class="gradingState[step.globalIdx] === true ? 'bg-emerald-50 text-emerald-600 border-emerald-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'">
+                            <i class="fa-solid fa-check mr-1"></i> 標準正確
+                        </button>
+                        <button @click="setStepStatus(step.globalIdx, false)" 
+                                class="flex-1 py-2.5 rounded-xl font-black text-[13px] border transition-all active:scale-95"
+                                :class="gradingState[step.globalIdx] === false ? 'bg-rose-50 text-rose-600 border-rose-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'">
+                            <i class="fa-solid fa-xmark mr-1"></i> 未通過
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 完成返回按鈕 -->
+            <div class="p-4 border-t border-slate-100 bg-white shrink-0">
+                <button @click="activeSubModal = null" class="w-full bg-slate-800 text-white py-3.5 rounded-[12px] font-black text-[15px] active:scale-95 transition-transform shadow-md">
+                    完成並返回
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { createApp, ref, computed, watch, onMounted, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js";
+
+    // ★★★ 替換為你的 Firebase Config ★★★
+    const firebaseConfig = {
+        apiKey: "AIzaSyB5ANwObcAu3Q2Zd077i_WV2Vn1ZfEanlk",
+        authDomain: "ems-passport-2024.firebaseapp.com",
+        projectId: "ems-passport-2024",
+        storageBucket: "ems-passport-2024.firebasestorage.app",
+        messagingSenderId: "759125431227",
+        appId: "1:759125431227:web:4ea69699f7d994daceaae9e"
+    };
+
+    const fireApp = initializeApp(firebaseConfig);
+    const db = getFirestore(fireApp);
+
+    const colorThemes = [
+        { bg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-700' },
+        { bg: 'bg-indigo-600', text: 'text-indigo-600', border: 'border-indigo-700' },
+        { bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-700' },
+        { bg: 'bg-rose-600', text: 'text-rose-600', border: 'border-rose-700' },
+        { bg: 'bg-amber-500', text: 'text-amber-600', border: 'border-amber-600' },
+        { bg: 'bg-cyan-600', text: 'text-cyan-600', border: 'border-cyan-700' }
+    ];
+
+    const CATEGORY_ORDER = [
+        '基本技能', '呼吸道管理', '呼吸管理', '現場處置', '外科器材運用', '運送患者及搬運', '內科器材運用', '內外科流程', '特殊情形'
+    ];
+
+    createApp({
+        setup() {
+            const slider = ref(null);
+            const tabsScrollRef = ref(null);
+            const activeTab = ref(0); 
+            
+            const isLoading = ref(true);
+            const isSubmitting = ref(false);
+            
+            // 彈窗狀態
+            const isMainModalOpen = ref(false);
+            const activeSubModal = ref(null); 
+
+            const instructorName = ref('劉奕昕');
+            const selectedStudent = ref('訪客');
+            
+            const usersList = ref([{ uid: 'guest', name: '訪客' }]);
+            const rawQuestions = ref([]);
+            const studentRecords = ref([]);
+
+            const activeItem = ref(null);
+            const itemSections = ref([]); 
+            const gradingState = ref([]); 
+            const evalRemarks = ref('');
+            const showEquipment = ref(false); // 控制器材展開
+
+            const fetchData = async () => {
+                try {
+                    if (usersList.value.length === 1) {
+                        const uSnap = await getDocs(collection(db, "passport_users"));
+                        const users = uSnap.docs.map(d => d.data());
+                        if (users.length > 0) {
+                            usersList.value = users;
+                            selectedStudent.value = users[0].name; 
+                        }
+                    }
+                    if (rawQuestions.value.length === 0) {
+                        const qSnap = await getDocs(collection(db, "passport_questions"));
+                        rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    }
+                } catch (error) {
+                    console.error("讀取資料庫失敗:", error);
+                }
+            };
+
+            watch(selectedStudent, (newName) => {
+                if (!newName) return;
+                isLoading.value = true;
+                const rQuery = query(collection(db, "passport_records"), where("userName", "==", newName));
+                
+                onSnapshot(rQuery, (snap) => {
+                    studentRecords.value = snap.docs.map(d => d.data());
+                    isLoading.value = false;
+                });
+            }, { immediate: true });
+
+            onMounted(() => { fetchData(); });
+
+            const displayCategories = computed(() => {
+                const groups = {};
+                rawQuestions.value.forEach(q => {
+                    const catName = q.category;
+                    if (!groups[catName]) {
+                        groups[catName] = { id: catName, name: catName, icon: q.icon || 'fa-clipboard-list', locked: q.locked || false, items: [], total: 0, completed: 0 };
+                    }
+                    const record = studentRecords.value.find(r => r.itemName === q.name);
+                    const status = record ? record.status : 'Pending';
+                    const score = record ? record.score : 0;
+
+                    groups[catName].items.push({ ...q, status, score });
+                    groups[catName].total++;
+                    if (status === 'Pass') groups[catName].completed++;
+                });
+
+                let catsArray = Object.values(groups);
+                catsArray.sort((a, b) => {
+                    let indexA = CATEGORY_ORDER.indexOf(a.name);
+                    let indexB = CATEGORY_ORDER.indexOf(b.name);
+                    if (indexA === -1) indexA = 999;
+                    if (indexB === -1) indexB = 999;
+                    return indexA - indexB;
+                });
+
+                return catsArray.map((cat, index) => {
+                    const theme = colorThemes[index % colorThemes.length];
+                    return { ...cat, activeClass: `${theme.bg} text-white ${theme.border}`, textColor: theme.text };
+                });
+            });
+
+            const totalProgress = computed(() => {
+                let completed = displayCategories.value.reduce((sum, cat) => sum + cat.completed, 0);
+                let total = displayCategories.value.reduce((sum, cat) => sum + cat.total, 0);
+                return total === 0 ? 0 : Math.round((completed / total) * 100);
+            });
+
+            const syncTabScroll = (index) => {
+                nextTick(() => {
+                    if (!tabsScrollRef.value) return;
+                    const tabEls = tabsScrollRef.value.querySelectorAll('.tab-item');
+                    if (tabEls[index]) tabEls[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                });
+            };
+
+            const scrollToTab = (index) => {
+                if (!slider.value || (index > 0 && displayCategories.value[index - 1].locked)) return;
+                slider.value.scrollTo({ left: slider.value.clientWidth * index, behavior: "smooth" });
+                activeTab.value = index;
+                syncTabScroll(index);
+            };
+
+            const onSliderScroll = () => {
+                if (!slider.value) return;
+                const index = Math.round(slider.value.scrollLeft / slider.value.clientWidth);
+                if (index !== activeTab.value) {
+                    activeTab.value = index;
+                    syncTabScroll(index);
+                }
+            };
+
+            // ★ 開啟主彈窗並解析資料
+            const openMainModal = (item) => {
+                activeItem.value = item;
+                showEquipment.value = false;
+                
+                const sectionsMap = {};
+                let globalIdxCounter = 0;
+                
+                // 確保把所有的步驟都裝進去，如果沒有 subItem 就用主項目名稱當分類
+                if (item.steps && Array.isArray(item.steps)) {
+                    item.steps.forEach(step => {
+                        const secTitle = step.subItem || item.name;
+                        if (!sectionsMap[secTitle]) {
+                            sectionsMap[secTitle] = { title: secTitle, steps: [] };
+                        }
+                        sectionsMap[secTitle].steps.push({ ...step, globalIdx: globalIdxCounter });
+                        globalIdxCounter++;
+                    });
+                }
+                
+                itemSections.value = Object.values(sectionsMap);
+                gradingState.value = new Array(globalIdxCounter).fill(null);
+                
+                // 讀取歷史成績
+                const pastRecord = studentRecords.value.find(r => r.itemName === item.name);
+                if (pastRecord && pastRecord.details) {
+                    try {
+                        const parsed = JSON.parse(pastRecord.details);
+                        if (Array.isArray(parsed) && parsed.length === globalIdxCounter) {
+                            gradingState.value = parsed.map(d => d.pass); 
+                        }
+                    } catch(e) {}
+                }
+
+                evalRemarks.value = pastRecord?.remarks || '';
+                isMainModalOpen.value = true;
+            };
+
+            // ★ 開啟子彈窗 (第二層)
+            const openSubModal = (section) => {
+                activeSubModal.value = section;
+            };
+
+            // 設定評分狀態
+            const setStepStatus = (index, status) => {
+                if (gradingState.value[index] === status) {
+                    gradingState.value[index] = null;
+                } else {
+                    gradingState.value[index] = status;
+                }
+            };
+
+            // 計算分數
+            const liveScore = computed(() => {
+                const total = gradingState.value.length;
+                if (total === 0) return 100;
+                const passed = gradingState.value.filter(s => s === true).length;
+                return Math.round((passed / total) * 100);
+            });
+
+            // 判斷左方指示條顏色
+            const getSectionBarColor = (section) => {
+                if (!section.steps || section.steps.length === 0) return 'bg-slate-200';
+                const statuses = section.steps.map(s => gradingState.value[s.globalIdx]);
+                // 如果有 null 或是混在一起的，依邏輯處理。這裡採用：只要有一個錯就紅，全對才綠，其他灰。
+                if (statuses.includes(false)) return 'bg-rose-500';
+                if (statuses.every(s => s === true)) return 'bg-emerald-500';
+                return 'bg-slate-200';
+            };
+
+            // 提交成績
+            const submitGrade = async () => {
+                if (!activeItem.value || isSubmitting.value) return;
+                isSubmitting.value = true;
+
+                const itemName = activeItem.value.name;
+                const userName = selectedStudent.value;
+                const docId = `${userName}_${itemName}`; 
+                
+                const finalScore = liveScore.value;
+                const finalStatus = finalScore >= 95 ? 'Pass' : 'Fail';
+                const detailsArray = gradingState.value.map(val => ({ pass: val }));
+
+                try {
+                    await setDoc(doc(db, "passport_records", docId), {
+                        userName: userName,
+                        itemName: itemName,
+                        status: finalStatus,
+                        score: finalScore,
+                        instructor: instructorName.value,
+                        remarks: evalRemarks.value,
+                        details: JSON.stringify(detailsArray),
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    isMainModalOpen.value = false;
+                } catch (error) {
+                    alert("❌ 儲存失敗: " + error.message);
+                } finally {
+                    isSubmitting.value = false;
+                }
+            };
+
+            return {
+                isLoading, isSubmitting, isMainModalOpen, activeSubModal,
+                slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll,
+                instructorName, selectedStudent, usersList,
+                displayCategories, totalProgress,
+                openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, showEquipment,
+                gradingState, setStepStatus, liveScore, evalRemarks, submitGrade
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
