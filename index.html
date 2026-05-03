@@ -282,30 +282,33 @@
                                 </div>
                             </div>
 
-                            <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 ml-8">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-gamepad text-indigo-500"></i>
-                                        <span class="text-[12px] font-black text-indigo-700">🎮 抽卡遊戲模式</span>
+                            <div class="bg-slate-50 border rounded-xl p-3 ml-8 space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm"><i class="fa-solid fa-sliders"></i></div>
+                                    <div class="flex-1">
+                                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">模式設定 Mode Setting</label>
+                                        <select v-model="step.mode" class="w-full bg-transparent font-black text-[13px] outline-none text-slate-800 appearance-none">
+                                            <option value="none">標準模式 (一般考核)</option>
+                                            <option value="game">🎮 隨機抽卡遊戲</option>
+                                            <option value="timer">⏱️ 高精度計時考核</option>
+                                        </select>
                                     </div>
-                                    <label class="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" v-model="step.isGameMode" class="sr-only peer">
-                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                                    </label>
+                                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                                 </div>
-                                <div v-if="step.isGameMode" class="space-y-4 mt-3">
+
+                                <div v-if="step.mode === 'game'" class="space-y-4 pt-2 border-t border-indigo-100/50">
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="space-y-1">
-                                            <label class="text-[10px] font-black text-slate-500 pl-1">隨機抽取張數</label>
-                                            <input type="number" v-model.number="step.gamePick" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-sm font-num outline-none text-indigo-700">
+                                            <label class="text-[10px] font-black text-slate-500">抽取張數</label>
+                                            <input type="number" v-model.number="step.gamePick" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-indigo-700">
                                         </div>
                                         <div class="space-y-1">
-                                            <label class="text-[10px] font-black text-slate-500 pl-1">挑戰倒數秒數</label>
-                                            <input type="number" v-model.number="step.gameTimer" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-sm font-num outline-none text-indigo-700">
+                                            <label class="text-[10px] font-black text-slate-500">倒數秒數</label>
+                                            <input type="number" v-model.number="step.gameTimer" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-indigo-700">
                                         </div>
                                     </div>
                                     <div class="space-y-1.5">
-                                        <label class="text-[10px] font-black text-slate-500 pl-1">使用的等級題庫 (可複選)</label>
+                                        <label class="text-[10px] font-black text-slate-500">使用題庫等級</label>
                                         <div class="flex flex-wrap gap-2">
                                             <label v-for="lv in ['S+', 'S', 'A', 'B']" :key="lv" class="flex items-center gap-1.5 bg-white border rounded-lg px-3 py-1.5 cursor-pointer shadow-sm">
                                                 <input type="checkbox" :value="lv" v-model="step.gamePool" class="w-3 h-3 rounded">
@@ -314,9 +317,16 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div v-if="step.mode === 'timer'" class="pt-2 border-t border-amber-100/50">
+                                    <div class="space-y-1">
+                                        <label class="text-[10px] font-black text-amber-600">合格秒數上限 (秒)</label>
+                                        <input type="number" step="0.1" v-model.number="step.timerLimit" class="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-amber-700">
+                                    </div>
+                                </div>
                             </div>
 
-                            <div v-if="!step.isGameMode" class="pl-8 space-y-2">
+                            <div v-if="step.mode === 'none'" class="pl-8 space-y-2">
                                 <div v-if="step.images && step.images.length > 0" class="flex flex-wrap gap-2">
                                     <div v-for="(imgUrl, imgIdx) in step.images" :key="imgIdx" class="relative flex flex-col items-center gap-1">
                                         <img :src="imgUrl" class="w-24 h-24 rounded-xl border object-cover shadow-sm" />
@@ -415,7 +425,7 @@
                             <p class="text-[14px] font-bold text-slate-700 leading-relaxed whitespace-pre-line">{{ step.text }}</p>
                             
                             <!-- 抽卡遊戲入口 UI -->
-                            <div v-if="step.isGameMode" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
+                            <div v-if="step.mode === 'game'" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
                                 <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500">
                                     <i class="fa-solid fa-layer-group text-2xl"></i>
                                 </div>
@@ -428,19 +438,54 @@
                                         <span v-for="lv in (step.gamePool || [])" :key="lv" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-700 font-black">{{ lv }} 級</span>
                                     </div>
                                 </div>
-                                <!-- 歷史耗時顯示 -->
-                                <div v-if="gradingState[step.globalIdx]?.timeUsed !== null" class="mt-4">
+                                <!-- 歷史耗時顯示 (遊戲) -->
+                                <div v-if="gradingState[step.globalIdx]?.timeUsed !== 0" class="mt-4">
                                     <div class="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border"
                                          :class="gradingState[step.globalIdx]?.pass ? 'text-emerald-600 bg-emerald-100 border-emerald-200' : 'text-rose-600 bg-rose-100 border-rose-200'">
                                         <i :class="gradingState[step.globalIdx]?.pass ? 'fa-solid fa-bolt' : 'fa-solid fa-triangle-exclamation'"></i>
                                         <span class="text-[11px] font-black">
-                                            {{ gradingState[step.globalIdx]?.pass ? '挑戰成功' : '挑戰失敗 (超時)' }}：耗時 {{ gradingState[step.globalIdx].timeUsed }} 秒
+                                            {{ gradingState[step.globalIdx]?.pass ? '挑戰成功' : '挑戰失敗 (超時)' }}：耗時 {{ gradingState[step.globalIdx].timeUsed.toFixed(2) }} 秒
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <template v-else>
+                            <!-- 計時器考核入口 UI -->
+                            <div v-if="step.mode === 'timer'" class="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-center relative overflow-hidden">
+                                <div class="relative z-10">
+                                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-amber-500">
+                                        <i class="fa-solid fa-stopwatch text-xl" :class="{ 'animate-pulse': !!stepTimers[step.globalIdx] }"></i>
+                                    </div>
+                                    <div class="mb-3">
+                                        <span class="text-4xl font-black font-num transition-colors duration-200" 
+                                              :class="gradingState[step.globalIdx]?.timeUsed <= (step.timerLimit || 999) ? 'text-emerald-600' : 'text-rose-600'">
+                                            {{ gradingState[step.globalIdx]?.timeUsed?.toFixed(2) || '0.00' }}
+                                        </span>
+                                        <span class="text-[11px] font-black text-slate-400 ml-1">秒</span>
+                                        <div class="text-[10px] font-bold text-slate-500 mt-1">合格限制：{{ (step.timerLimit || 0).toFixed(1) }} 秒內</div>
+                                    </div>
+                                    
+                                    <div class="flex gap-2">
+                                        <button v-if="!stepTimers[step.globalIdx]" @click="startStepTimer(step)" class="flex-1 bg-amber-500 text-white py-3 rounded-xl font-black text-[13px] shadow-lg active:scale-95 transition-all">
+                                            <i class="fa-solid fa-play mr-1"></i> 開始計時
+                                        </button>
+                                        <button v-else @click="stopStepTimer(step)" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-black text-[13px] shadow-lg active:scale-95">
+                                            <i class="fa-solid fa-stop mr-1"></i> 停止並存檔
+                                        </button>
+                                        <button @click="resetStepTimer(step)" class="w-12 bg-white border border-slate-200 text-slate-400 rounded-xl flex items-center justify-center active:bg-slate-50">
+                                            <i class="fa-solid fa-rotate-right text-xs"></i>
+                                        </button>
+                                    </div>
+
+                                    <div v-if="gradingState[step.globalIdx]?.pass !== null && !stepTimers[step.globalIdx]" class="mt-3">
+                                        <p class="text-[10px] font-black uppercase tracking-widest" :class="gradingState[step.globalIdx]?.pass ? 'text-emerald-500' : 'text-rose-500'">
+                                            {{ gradingState[step.globalIdx]?.pass ? '合格：時間內完成' : '不合格：已超過時限' }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <template v-else-if="step.mode === 'none'">
                                 <div v-if="step.images?.length" class="mt-2 space-y-2">
                                     <img v-for="(imgUrl, ii) in step.images" :key="ii" :src="imgUrl" class="w-full rounded-xl border object-cover shadow-sm max-h-48" />
                                 </div>
@@ -458,7 +503,7 @@
         </div>
     </div>
 
-    <!-- ⭐ 全螢幕遊戲挑戰室 (增加超時計時邏輯) ⭐ -->
+    <!-- 全螢幕遊戲挑戰室 -->
     <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen }">
         <header class="p-5 pb-3 flex justify-between items-start text-white">
             <div class="pr-6">
@@ -485,13 +530,11 @@
 
         <footer class="p-5 bg-slate-900/80 backdrop-blur-xl border-t border-white/10">
             <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3" 
-                     :class="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500' : 'text-emerald-500'">
-                    <i class="fa-solid fa-stopwatch text-xl" :class="{ 'timer-pulse': gameState[activeGameStep?.globalIdx]?.isRunning && gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 }"></i>
-                    
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-stopwatch text-xl" :class="[gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500 timer-pulse' : 'text-emerald-500']"></i>
                     <div class="flex flex-col">
-                        <span class="text-3xl font-black font-num leading-none">
-                            {{ activeGameStep ? (gameState[activeGameStep.globalIdx]?.timeLeft <= 0 ? Math.abs(gameState[activeGameStep.globalIdx]?.timeLeft) : gameState[activeGameStep.globalIdx]?.timeLeft) : 0 }}
+                        <span class="text-3xl font-black font-num leading-none transition-colors duration-200" :class="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500' : 'text-emerald-500'">
+                            {{ activeGameStep ? Math.abs(gameState[activeGameStep.globalIdx]?.timeLeft).toFixed(2) : '0.00' }}
                             <span class="text-xs ml-1 font-black">秒</span>
                         </span>
                         <span v-if="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0" class="text-[10px] font-black uppercase tracking-widest text-rose-400 mt-1">Overtime 超時中</span>
@@ -502,7 +545,7 @@
                         class="px-5 py-2 rounded-xl font-black text-sm flex items-center gap-2 transition-all active:scale-95"
                         :class="gameState[activeGameStep.globalIdx]?.isRunning ? 'bg-amber-500 text-white' : 'bg-indigo-600 text-white'">
                     <i :class="gameState[activeGameStep.globalIdx]?.isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
-                    {{ gameState[activeGameStep.globalIdx]?.isRunning ? '暫停計時' : (gameState[activeGameStep.globalIdx]?.hasStarted ? '繼續計時' : '開始計時') }}
+                    {{ gameState[activeGameStep.globalIdx]?.isRunning ? '暫探計時' : (gameState[activeGameStep.globalIdx]?.hasStarted ? '繼續計時' : '開始計時') }}
                 </button>
             </div>
             
@@ -513,10 +556,6 @@
                 <i class="fa-solid fa-trophy"></i> 
                 {{ activeGameStep && gameState[activeGameStep.globalIdx]?.hasStarted ? '完成挑戰並考核' : '請先點擊「開始計時」' }}
             </button>
-            
-            <p class="text-center text-slate-500 text-[9px] mt-3 font-bold tracking-widest uppercase">
-                {{ gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'Challenge Unpassed due to overtime' : 'Standard correct if finished in time' }}
-            </p>
         </footer>
     </div>
 
@@ -557,6 +596,7 @@
             const gameState = ref({}); 
             const isGameModalOpen = ref(false);
             const activeGameStep = ref(null);
+            const stepTimers = ref({});
 
             const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
             const studentsList = computed(() => { const s = usersList.value.filter(u => !['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))); return s.length ? s : [{ uid: 'guest', name: '訪客' }]; });
@@ -573,7 +613,11 @@
                     fetchCentralGallery(); 
                 } catch(e){} 
             };
-            const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
+            const fetchQuestions = async (re = false) => { 
+                const qSnap = await getDocs(collection(db, "passport_questions")); 
+                rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); 
+                if(re) updateEditorCategories(); 
+            };
             const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
             const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
@@ -593,10 +637,16 @@
                     g[c].items.push({ ...q, status: r?.status || 'Pending', score: r?.score || 0, orderWeight: q.orderWeight ?? 99 });
                     g[c].total++; if(r?.status === 'Pass') g[c].completed++;
                 });
-                return Object.values(g).sort((a,b) => a.orderWeight - b.orderWeight).map((cat, i) => { cat.items.sort((a,b) => a.orderWeight - b.orderWeight); const t = colorThemes[i % colorThemes.length]; return { ...cat, activeClass: `${t.bg} text-white ${t.border}`, textColor: t.text }; });
+                return Object.values(g).sort((a,b) => a.orderWeight - b.orderWeight).map((cat, i) => { 
+                    cat.items.sort((a,b) => (a.orderWeight - b.orderWeight) || a.name.localeCompare(b.name)); 
+                    const t = colorThemes[i % colorThemes.length]; 
+                    return { ...cat, activeClass: `${t.bg} text-white ${t.border}`, textColor: t.text }; 
+                });
             });
 
-            const updateEditorCategories = () => editorCategories.value = JSON.parse(JSON.stringify(displayCategories.value));
+            const updateEditorCategories = () => {
+                editorCategories.value = JSON.parse(JSON.stringify(displayCategories.value));
+            };
             const existingCategories = computed(() => displayCategories.value.map(c => c.name));
             const totalProgress = computed(() => { let c = displayCategories.value.reduce((s, a) => s + a.completed, 0), t = displayCategories.value.reduce((s, a) => s + a.total, 0); return t ? Math.round((c/t)*100) : 0; });
 
@@ -607,11 +657,11 @@
                 activeItem.value = item; const secMap = {}; let gIdx = 0;
                 item.steps?.forEach(s => { const t = s.subItem || item.name; if(!secMap[t]) secMap[t] = { title: t, steps: [] }; secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); });
                 itemSections.value = Object.values(secMap); 
-                gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: null }));
+                gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: 0 }));
                 const r = studentRecords.value.find(rec => rec.itemName === item.name);
                 if(r?.details) try { 
                     const p = JSON.parse(r.details); 
-                    p.forEach((d, idx) => { if(gradingState.value[idx]) { gradingState.value[idx].pass = d.pass; gradingState.value[idx].timeUsed = d.timeUsed; } });
+                    p.forEach((d, idx) => { if(gradingState.value[idx]) { gradingState.value[idx].pass = d.pass; gradingState.value[idx].timeUsed = d.timeUsed || 0; } });
                 } catch(e){}
                 evalRemarks.value = r?.remarks || ''; isMainModalOpen.value = true;
             };
@@ -622,13 +672,42 @@
                 const idx = step.globalIdx;
                 const state = gradingState.value[idx];
                 state.pass = state.pass === isPass ? null : isPass;
-                if(state.pass === null) state.timeUsed = null;
             };
 
             const liveScore = computed(() => { const t = gradingState.value.length; if(!t) return 100; const ok = gradingState.value.filter(v => v.pass === true).length; return Math.round((ok/t)*100); });
             const getSectionBarColor = (s) => { const st = s.steps.map(st => gradingState.value[st.globalIdx]?.pass); return st.includes(false) ? 'bg-rose-500' : (st.every(v => v === true) ? 'bg-emerald-500' : 'bg-slate-200'); };
             const isSectionCompleted = (s) => s.steps.every(st => gradingState.value[st.globalIdx]?.pass === true);
             const activeItemHistory = computed(() => activeItem.value ? [...(studentRecords.value.find(r => r.itemName === activeItem.value.name)?.history || [])].reverse() : []);
+
+            // 高精度計時器
+            const startStepTimer = (step) => {
+                const idx = step.globalIdx;
+                if(stepTimers.value[idx]) return;
+                gradingState.value[idx].timeUsed = 0;
+                gradingState.value[idx].pass = null;
+                const startTime = Date.now();
+                stepTimers.value[idx] = setInterval(() => {
+                    gradingState.value[idx].timeUsed = (Date.now() - startTime) / 1000;
+                }, 50);
+            };
+
+            const stopStepTimer = (step) => {
+                const idx = step.globalIdx;
+                if(!stepTimers.value[idx]) return;
+                clearInterval(stepTimers.value[idx]);
+                delete stepTimers.value[idx];
+                const used = gradingState.value[idx].timeUsed;
+                const limit = step.timerLimit || 999;
+                gradingState.value[idx].pass = used <= limit;
+                showToast(gradingState.value[idx].pass ? "合格" : "超過時限", gradingState.value[idx].pass ? "success" : "warning");
+            };
+
+            const resetStepTimer = (step) => {
+                const idx = step.globalIdx;
+                if(stepTimers.value[idx]) { clearInterval(stepTimers.value[idx]); delete stepTimers.value[idx]; }
+                gradingState.value[idx].timeUsed = 0;
+                gradingState.value[idx].pass = null;
+            };
 
             const startCardGame = (step) => {
                 const count = step.gamePick || 3;
@@ -639,12 +718,7 @@
                 
                 activeGameStep.value = step;
                 gameState.value[step.globalIdx] = { 
-                    active: true, 
-                    drawnCards: drawn, 
-                    timeLeft: step.gameTimer || 60, 
-                    interval: null,
-                    isRunning: false,
-                    hasStarted: false
+                    active: true, drawnCards: drawn, timeLeft: step.gameTimer || 60, interval: null, isRunning: false, hasStarted: false, startTime: 0, initialTime: step.gameTimer || 60
                 };
                 isGameModalOpen.value = true;
             };
@@ -660,15 +734,12 @@
                 } else {
                     s.isRunning = true;
                     s.hasStarted = true;
+                    const referenceTime = Date.now();
+                    const startingTimeLeft = s.timeLeft;
                     s.interval = setInterval(() => {
-                        const state = gameState.value[gIdx];
-                        if (!state || !state.active) {
-                            clearInterval(state?.interval);
-                            return;
-                        }
-                        // 修改邏輯：時間到 0 後繼續倒數(變成負數)代表超時
-                        state.timeLeft--;
-                    }, 1000);
+                        const elapsed = (Date.now() - referenceTime) / 1000;
+                        s.timeLeft = startingTimeLeft - elapsed;
+                    }, 50);
                 }
             };
 
@@ -676,22 +747,10 @@
                 const gIdx = step.globalIdx;
                 const s = gameState.value[gIdx];
                 if(s && s.hasStarted) {
-                    // 計算耗時
-                    const limit = step.gameTimer || 60;
-                    const timeUsed = limit - s.timeLeft;
-                    
+                    const timeUsed = s.initialTime - s.timeLeft;
                     gradingState.value[gIdx].timeUsed = timeUsed;
-                    
-                    if (s.timeLeft >= 0) {
-                        // 時間內完成：標準正確
-                        gradingState.value[gIdx].pass = true;
-                        showToast(`標準正確！耗時 ${timeUsed} 秒`, "success");
-                    } else {
-                        // 超時完成：未通過
-                        gradingState.value[gIdx].pass = false;
-                        showToast(`未通過！超時 ${Math.abs(s.timeLeft)} 秒 (總耗時:${timeUsed}秒)`, "warning");
-                    }
-                    
+                    gradingState.value[gIdx].pass = s.timeLeft >= 0;
+                    showToast(s.timeLeft >= 0 ? "合格" : "超時不合格", s.timeLeft >= 0 ? "success" : "warning");
                     stopGame(gIdx);
                 } else {
                     showToast("請先點擊開始計時", "warning");
@@ -700,15 +759,16 @@
 
             const stopGame = (gIdx) => {
                 const s = gameState.value[gIdx];
-                if(s) { 
-                    clearInterval(s.interval); 
-                    s.active = false; 
-                    s.isRunning = false;
-                }
+                if(s) { clearInterval(s.interval); s.active = false; s.isRunning = false; }
                 isGameModalOpen.value = false;
             };
 
-            const handleSubModalClose = () => { Object.keys(gameState.value).forEach(idx => stopGame(idx)); activeSubModal.value = null; };
+            const handleSubModalClose = () => { 
+                Object.keys(gameState.value).forEach(idx => stopGame(idx)); 
+                Object.keys(stepTimers.value).forEach(idx => clearInterval(stepTimers.value[idx]));
+                stepTimers.value = {};
+                activeSubModal.value = null; 
+            };
 
             const submitGrade = async () => {
                 if(!activeItem.value || isSubmitting.value) return; isSubmitting.value = true;
@@ -767,11 +827,18 @@
             };
 
             const removeStepImage = (g, sIdx, imgIdx, url) => { g.steps[sIdx].images.splice(imgIdx, 1); deleteImageFromStorage(url); sessionUploadedUrls.value = sessionUploadedUrls.value.filter(u => u !== url); };
-            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] }] }; editorMode.value = 'edit'; };
+            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }] }] }; editorMode.value = 'edit'; };
             const editItem = (item) => {
                 sessionUploadedUrls.value = []; const grp = []; let cur = null;
-                item.steps?.forEach(s => { const n = s.subItem || item.name; if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } cur.steps.push({ text: s.text || '', images: s.images || [], isGameMode: !!s.isGameMode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'] }); });
-                editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] }] };
+                item.steps?.forEach(s => { 
+                    const n = s.subItem || item.name; 
+                    if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } 
+                    let mode = s.mode || 'none';
+                    if(mode==='none' && s.isGameMode) mode = 'game';
+                    if(mode==='none' && s.isTimerMode) mode = 'timer';
+                    cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30 }); 
+                });
+                editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }] }] };
                 editorMode.value = 'edit';
             };
 
@@ -781,7 +848,11 @@
                 const f = editForm.value; const c = isNewCategory.value ? newCategoryName.value.trim() : f.category;
                 if(!c || !f.name) return showToast("填寫資訊", "warning");
                 isEditorSaving.value = true; const nId = `${c}_${f.name}`;
-                const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.isGameMode).map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], isGameMode: !!s.isGameMode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'] })));
+                const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ 
+                    subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], 
+                    mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, 
+                    gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30 
+                })));
                 try {
                     const batch = writeBatch(db);
                     if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
@@ -796,32 +867,58 @@
             };
 
             const deleteItem = (i) => showAppConfirm('刪除', `確定刪除「${i.name}」？`, async () => { await deleteDoc(doc(db, "passport_questions", i.id)); fetchQuestions(true); });
+            
+            // 修復後的移動排序邏輯 - 重新分配所有權重
             const moveCategoryOrder = async (idx, dir) => {
-                const cs = editorCategories.value; const t = idx + dir; if(t < 0 || t >= cs.length) return;
-                const c1 = cs[idx], c2 = cs[t], w1 = c1.orderWeight, w2 = c2.orderWeight;
-                c1.orderWeight = w2; c2.orderWeight = w1; cs.splice(idx, 1, c2); cs.splice(t, 1, c1);
-                const b = writeBatch(db); c1.items.forEach(i => b.update(doc(db, "passport_questions", i.id), { catOrderWeight: w2 })); c2.items.forEach(i => b.update(doc(db, "passport_questions", i.id), { catOrderWeight: w1 }));
-                await b.commit(); fetchQuestions();
-            };
-            const moveItemOrder = async (ci, ii, dir) => {
-                const c = editorCategories.value[ci]; const t = ii + dir; if(t < 0 || t >= c.items.length) return;
-                const i1 = c.items[ii], i2 = c.items[t], w1 = i1.orderWeight, w2 = i2.orderWeight;
-                i1.orderWeight = w2; i2.orderWeight = w1; c.items.splice(ii, 1, i2); c.items.splice(t, 1, i1);
-                const b = writeBatch(db); b.update(doc(db, "passport_questions", i1.id), { orderWeight: w2 }); b.update(doc(db, "passport_questions", i2.id), { orderWeight: w1 });
-                await b.commit(); fetchQuestions();
+                const cs = [...editorCategories.value];
+                const t = idx + dir;
+                if(t < 0 || t >= cs.length) return;
+                [cs[idx], cs[t]] = [cs[t], cs[idx]];
+                
+                const batch = writeBatch(db);
+                cs.forEach((cat, index) => {
+                    const newCatWeight = index * 10;
+                    cat.orderWeight = newCatWeight;
+                    cat.items.forEach(item => {
+                        batch.update(doc(db, "passport_questions", item.id), { catOrderWeight: newCatWeight });
+                    });
+                });
+                editorCategories.value = cs;
+                await batch.commit();
+                fetchQuestions();
             };
 
-            const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] });
-            const addStepToGroup = (g) => g.steps.push({ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] });
+            const moveItemOrder = async (ci, ii, dir) => {
+                const cat = editorCategories.value[ci];
+                const items = [...cat.items];
+                const t = ii + dir;
+                if(t < 0 || t >= items.length) return;
+                
+                [items[ii], items[t]] = [items[t], items[ii]];
+                
+                const batch = writeBatch(db);
+                items.forEach((item, index) => {
+                    const newWeight = index * 10;
+                    item.orderWeight = newWeight;
+                    batch.update(doc(db, "passport_questions", item.id), { orderWeight: newWeight });
+                });
+                cat.items = items;
+                await batch.commit();
+                fetchQuestions();
+            };
+
+            const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }] });
+            const addStepToGroup = (g) => g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 });
             const removeGroup = (i) => editForm.value.groupedSections.splice(i, 1);
-            const removeStep = (g, i) => { g.steps.splice(i, 1); if(!g.steps.length) g.steps.push({ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }); };
+            const removeStep = (g, i) => { g.steps.splice(i, 1); if(!g.steps.length) g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }); };
             const moveGroup = (i, d) => { const a = editForm.value.groupedSections, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
             return {
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep,
-                centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor
+                centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor,
+                stepTimers, startStepTimer, stopStepTimer, resetStepTimer
             };
         }
     }).mount('#app');
