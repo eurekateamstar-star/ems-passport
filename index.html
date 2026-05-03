@@ -28,8 +28,6 @@
         .slide-page { flex:0 0 100%; width:100%; scroll-snap-align:start; padding:0 20px 40px 20px; box-sizing:border-box; overflow-y:auto; -webkit-overflow-scrolling:touch; }
         .slide-page::-webkit-scrollbar { display:none; }
 
-        .passport-gradient { background: linear-gradient(to bottom right, #0ea5e9, #10b981) !important; color: white !important; }
-
         .bottom-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .bottom-sheet-overlay.active { opacity: 1; pointer-events: auto; }
         .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top-left-radius: 32px; border-top-right-radius: 32px; z-index: 1001; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; padding: 24px; padding-bottom: calc(24px + var(--safe-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,0.15); }
@@ -49,17 +47,22 @@
         .sub-modal-body { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
         .sub-modal-body::-webkit-scrollbar { display: none; }
         
-        /* 全螢幕彈窗 (題庫編輯器專用) */
         .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; }
         .full-screen-modal.active { transform: translateY(0); }
+
+        .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+        @keyframes cardPop { 0% { opacity:0; transform: scale(0.5) translateY(20px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
+        .timer-pulse { animation: timerPulse 1s infinite; color: #ef4444; }
+        @keyframes timerPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
 
         ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
 <body>
+
 <div id="app">
 
-    <!-- 全域 Toast 提示訊息 -->
+    <!-- 全域 Toast -->
     <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300"
          :class="toast.show ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'">
         <div class="bg-slate-800 text-white px-6 py-3.5 rounded-[14px] shadow-2xl text-[13px] font-bold flex items-center gap-3 whitespace-nowrap border border-slate-700">
@@ -68,7 +71,7 @@
         </div>
     </div>
 
-    <!-- 全域 確認彈窗 -->
+    <!-- 確認彈窗 -->
     <div class="bottom-sheet-overlay" :class="{ active: appConfirm.show }" @click="appConfirm.show = false"></div>
     <div class="bottom-sheet" :class="{ active: appConfirm.show }">
         <div class="text-center py-4">
@@ -78,8 +81,8 @@
             <h4 class="text-xl font-black text-slate-800 mb-2">{{ appConfirm.title }}</h4>
             <p class="text-sm font-bold text-slate-400 mb-8">{{ appConfirm.msg }}</p>
             <div class="flex gap-3">
-                <button @click="appConfirm.show = false" class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-500 font-black text-sm active:scale-95 transition-transform">取消</button>
-                <button @click="appConfirm.onConfirm" class="flex-1 py-4 rounded-2xl bg-amber-500 text-white font-black text-sm shadow-lg shadow-amber-200 active:scale-95 transition-transform">確認執行</button>
+                <button @click="appConfirm.show = false" class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-500 font-black text-sm">取消</button>
+                <button @click="appConfirm.onConfirm" class="flex-1 py-4 rounded-2xl bg-amber-500 text-white font-black text-sm shadow-lg">確認執行</button>
             </div>
         </div>
     </div>
@@ -91,10 +94,7 @@
             <h1 class="text-3xl font-black text-slate-800 tracking-tight">海山救護</h1>
         </div>
         <div class="flex items-center gap-3">
-            <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl">
-                <i class="fa-solid fa-circle-notch"></i>
-            </div>
-            <!-- 題庫管理按鈕 -->
+            <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl"><i class="fa-solid fa-circle-notch"></i></div>
             <button v-if="isInstructorMode" @click="openEditorList" class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white shadow-md active:scale-95 transition-transform">
                 <i class="fa-solid fa-pen-to-square text-sm"></i>
             </button>
@@ -107,19 +107,14 @@
             <div class="flex flex-col flex-1 mr-4">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="text-slate-400 text-[10px] font-black uppercase">切換學員 (Student)</span>
-                    <span v-if="isInstructorMode" class="px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-[10px] font-black shadow-sm">
-                        教官: {{ currentInstructorName }}
-                    </span>
-                    <span v-else class="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-black border border-slate-200">
-                        學員模式
-                    </span>
+                    <span v-if="isInstructorMode" class="px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-[10px] font-black">教官: {{ currentInstructorName }}</span>
+                    <span v-else class="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-black">學員模式</span>
                 </div>
-                
                 <div class="relative mt-0.5">
                     <select v-model="selectedStudent" class="w-full bg-transparent text-lg font-black text-slate-800 outline-none appearance-none cursor-pointer">
                         <option v-for="user in studentsList" :key="user.name" :value="user.name">{{ user.name }}</option>
                     </select>
-                    <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-sm"></i>
+                    <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                 </div>
             </div>
             <div class="text-right shrink-0">
@@ -143,7 +138,7 @@
                      :class="activeTab === (index + 1) ? cat.activeClass : 'bg-white text-slate-300 border border-slate-100'">
                     <i :class="['fa-solid', cat.icon]" class="text-xl"></i>
                 </div>
-                <span class="text-[11px] font-black" :class="activeTab === (index + 1) ? cat.textColor : 'text-slate-400'">{{ cat.name.substring(0, 4) }}</span>
+                <span class="text-[11px] font-black w-[56px] text-center truncate" :class="activeTab === (index + 1) ? cat.textColor : 'text-slate-400'">{{ cat.name }}</span>
             </div>
         </div>
     </div>
@@ -152,17 +147,14 @@
     <div class="slides-section relative">
         <div class="content-slider" ref="slider" @scroll="onSliderScroll">
             
-            <!-- 九宮格總覽 -->
             <div class="slide-page pt-2">
                 <div class="grid grid-cols-3 gap-3 pb-10">
-                    <div v-for="(cat, idx) in displayCategories" :key="cat.id" 
+                    <div v-for="(cat, idx) in displayCategories" :key="'grid-'+cat.id" 
                          @click="scrollToTab(idx + 1)"
                          class="list-card p-2 py-4 flex flex-col items-center text-center relative shadow-sm cursor-pointer active:scale-95 transition-transform"
                          :class="cat.locked ? 'opacity-40 grayscale bg-slate-50' : 'bg-white hover:bg-slate-50'">
-                        
                         <div v-if="cat.locked" class="absolute top-2 right-2 text-slate-300 text-xs z-10"><i class="fa-solid fa-lock"></i></div>
                         <div v-else-if="cat.completed === cat.total && cat.total > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-[10px] text-white z-10 shadow-sm border border-white font-num"><i class="fa-solid fa-check"></i></div>
-
                         <div class="w-12 h-12 rounded-[14px] flex items-center justify-center mb-2 text-xl shadow-sm text-white border" :class="cat.activeClass"><i :class="['fa-solid', cat.icon]"></i></div>
                         <p class="text-[12px] font-black text-slate-700 leading-tight min-h-[32px] flex items-center justify-center px-1">{{ cat.name }}</p>
                         <p class="text-[11px] font-black mt-1 font-num" :class="cat.locked ? 'text-slate-400' : 'text-emerald-600'">{{ cat.completed }}<span class="text-[9px] text-slate-400 font-bold mx-0.5">/</span>{{ cat.total }}</p>
@@ -170,7 +162,6 @@
                 </div>
             </div>
 
-            <!-- 各類別清單 -->
             <div v-for="cat in displayCategories" :key="'page-'+cat.id" class="slide-page pt-2 pb-10">
                 <div class="mb-4 px-1 flex justify-between items-end">
                     <div>
@@ -178,25 +169,20 @@
                         <p class="text-[10px] font-bold uppercase tracking-widest mt-1" :class="cat.textColor">MODULE ITEMS</p>
                     </div>
                 </div>
-
                 <div v-if="cat.locked" class="flex flex-col items-center justify-center py-16 text-slate-300">
                     <i class="fa-solid fa-lock text-4xl mb-4"></i>
                     <p class="font-black text-sm mt-2">項目尚未解鎖</p>
                 </div>
-
                 <div v-else class="space-y-3">
-                    <div v-for="item in cat.items" :key="item.id" 
+                    <div v-for="item in cat.items" :key="'item-'+item.id" 
                          @click="handleItemClick(item)"
                          class="list-card p-4 flex justify-between items-center cursor-pointer active:scale-[0.98] transition-all bg-white relative overflow-hidden">
-                        
                         <div v-if="!isInstructorMode" class="absolute inset-0 bg-slate-50/30"></div>
-
                         <div class="flex flex-col flex-1 pr-4 relative z-10">
                             <span class="font-black text-slate-800 text-[15px]">{{ item.name }}</span>
                             <span v-if="isInstructorMode" class="text-[10px] font-bold text-emerald-500 mt-1"><i class="fa-solid fa-pen-to-square"></i> 點擊進行考核</span>
                             <span v-else class="text-[10px] font-bold text-slate-400 mt-1">僅限教官查看細項</span>
                         </div>
-                        
                         <div class="relative z-10">
                             <div v-if="item.status === 'Pass'" class="flex flex-col items-end">
                                 <i class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i>
@@ -206,9 +192,7 @@
                                 <i class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i>
                                 <span class="text-[10px] font-bold text-rose-600 mt-1 font-num">{{ item.score }} 分</span>
                             </div>
-                            <div v-else>
-                                <div class="w-6 h-6 rounded-full border-[2px] border-slate-200"></div>
-                            </div>
+                            <div v-else><div class="w-6 h-6 rounded-full border-[2px] border-slate-200"></div></div>
                         </div>
                     </div>
                 </div>
@@ -217,342 +201,278 @@
         </div>
     </div>
 
-    <!-- 右下角教官登入按鈕 -->
+    <!-- 右下角教官按鈕 -->
     <div class="absolute bottom-6 right-6 z-40">
-        <button v-if="!isInstructorMode" @click="isLoginModalOpen = true" class="w-14 h-14 rounded-full bg-yellow-400 text-yellow-900 shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-yellow-300">
-            <i class="fa-solid fa-lock text-xl"></i>
-        </button>
-        <button v-else @click="handleLogout" class="w-14 h-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-emerald-500">
-            <i class="fa-solid fa-unlock-keyhole text-xl"></i>
-        </button>
+        <button v-if="!isInstructorMode" @click="isLoginModalOpen = true" class="w-14 h-14 rounded-full bg-yellow-400 text-yellow-900 shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-yellow-300"><i class="fa-solid fa-lock text-xl"></i></button>
+        <button v-else @click="handleLogout" class="w-14 h-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-emerald-500"><i class="fa-solid fa-unlock-keyhole text-xl"></i></button>
     </div>
 
-
-    <!-- ============================================== -->
-    <!-- ★★★ 全新功能：題庫編輯管理中心 (In-App CMS) ★★★ -->
-    <!-- ============================================== -->
+    <!-- 題庫編輯中心 -->
     <div class="full-screen-modal" :class="{ active: isEditorOpen }">
         <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-3 px-5 flex justify-between items-center bg-slate-800 text-white shrink-0 shadow-md z-10">
             <div>
                 <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase mb-0.5">Management</p>
                 <h1 class="text-xl font-black">題庫管理中心</h1>
             </div>
-            <button @click="closeEditor" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <button @click="closeEditor" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-95 transition-transform"><i class="fa-solid fa-xmark"></i></button>
         </header>
 
-        <!-- Mode 1: 題庫列表 -->
-        <div v-if="editorMode === 'list'" class="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
-            <button @click="createNewItem" class="w-full py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform flex justify-center items-center gap-2">
-                <i class="fa-solid fa-plus"></i> 新增考核項目
-            </button>
-
-            <div v-for="cat in displayCategories" :key="'edit-cat-'+cat.id" class="space-y-3">
-                <h3 class="text-sm font-black text-slate-500 uppercase tracking-widest border-b border-slate-200 pb-1 ml-1">{{ cat.name }}</h3>
-                <div v-for="item in cat.items" :key="'edit-item-'+item.id" class="list-card p-3 flex justify-between items-center bg-white shadow-sm">
+        <div v-if="editorMode === 'list'" class="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+            <div class="grid grid-cols-2 gap-3">
+                <button @click="createNewItem" class="py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg active:scale-95 flex justify-center items-center gap-2"><i class="fa-solid fa-plus"></i> 新增考核</button>
+                <button @click="openGalleryManager" class="py-4 rounded-2xl bg-emerald-600 text-white font-black text-sm shadow-lg active:scale-95 flex justify-center items-center gap-2"><i class="fa-solid fa-images"></i> 抽卡圖庫</button>
+            </div>
+            
+            <div v-for="(cat, catIdx) in editorCategories" :key="'edit-cat-'+cat.id" class="space-y-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-1">
+                    <h3 class="text-[15px] font-black text-indigo-600 flex items-center gap-2"><i :class="['fa-solid', cat.icon]"></i> {{ cat.name }}</h3>
+                    <div class="flex gap-1">
+                        <button @click="moveCategoryOrder(catIdx, -1)" :disabled="catIdx === 0" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center active:scale-95 disabled:opacity-30"><i class="fa-solid fa-arrow-up text-xs"></i></button>
+                        <button @click="moveCategoryOrder(catIdx, 1)" :disabled="catIdx === editorCategories.length - 1" class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center active:scale-95 disabled:opacity-30"><i class="fa-solid fa-arrow-down text-xs"></i></button>
+                    </div>
+                </div>
+                <div v-for="(item, idx) in cat.items" :key="'edit-item-'+item.id" class="p-2.5 flex justify-between items-center bg-slate-50 rounded-xl border border-slate-100">
                     <span class="font-bold text-[14px] text-slate-700 truncate flex-1 pr-2">{{ item.name }}</span>
-                    <div class="flex gap-2 shrink-0">
-                        <button @click="editItem(item)" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center active:scale-95">
-                            <i class="fa-solid fa-pen text-xs"></i>
-                        </button>
-                        <button @click="deleteItem(item)" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center active:scale-95">
-                            <i class="fa-solid fa-trash text-xs"></i>
-                        </button>
+                    <div class="flex gap-1.5 shrink-0 items-center">
+                        <button @click="moveItemOrder(catIdx, idx, -1)" :disabled="idx === 0" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-500"><i class="fa-solid fa-arrow-up text-xs"></i></button>
+                        <button @click="moveItemOrder(catIdx, idx, 1)" :disabled="idx === cat.items.length - 1" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-500 mr-2"><i class="fa-solid fa-arrow-down text-xs"></i></button>
+                        <button @click="editItem(item)" class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button @click="deleteItem(item)" class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Mode 2: 題庫編輯器 (表單) -->
         <div v-if="editorMode === 'edit'" class="flex-1 overflow-y-auto p-4 pb-32 space-y-4">
-            
-            <!-- 區塊1: 基本設定 -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div class="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
-                    <i class="fa-solid fa-cube text-blue-500"></i>
-                    <span class="font-black text-sm text-slate-700">基本設定</span>
-                </div>
-                
-                <!-- 大類別下拉選單 + 自訂新增 -->
+                <div class="flex items-center gap-2 mb-2 border-b pb-2"><i class="fa-solid fa-cube text-blue-500"></i><span class="font-black text-sm text-slate-700">基本設定</span></div>
                 <div class="space-y-1">
-                    <label class="text-[11px] font-black text-slate-500">大類別 (Category)</label>
-                    <div class="relative">
-                        <select v-model="editForm.category" @change="checkNewCategory" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none appearance-none">
-                            <option value="" disabled>請選擇類別...</option>
-                            <option v-for="c in existingCategories" :key="c" :value="c">{{ c }}</option>
-                            <option value="NEW_CATEGORY">➕ 新增自訂類別...</option>
-                        </select>
-                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
-                    </div>
-                    <input v-if="isNewCategory" v-model="newCategoryName" type="text" placeholder="輸入新的大類別名稱" class="w-full bg-white border border-blue-300 rounded-[10px] px-3 py-2.5 text-sm font-bold text-blue-800 outline-none mt-2 shadow-sm focus:ring-2 focus:ring-blue-100">
+                    <label class="text-[11px] font-black text-slate-500">大類別</label>
+                    <div class="relative"><select v-model="editForm.category" @change="checkNewCategory" class="w-full bg-slate-50 border rounded-[10px] px-3 py-2.5 text-sm font-bold outline-none appearance-none"><option value="" disabled>請選擇...</option><option v-for="c in existingCategories" :key="c" :value="c">{{ c }}</option><option value="NEW_CATEGORY">➕ 新增自訂類別...</option></select><i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i></div>
+                    <input v-if="isNewCategory" v-model="newCategoryName" type="text" placeholder="輸入新的大類別名稱" class="w-full bg-white border-blue-300 rounded-[10px] px-3 py-2.5 text-sm font-bold mt-2">
                 </div>
-
-                <div class="space-y-1">
-                    <label class="text-[11px] font-black text-slate-500">項目名稱 (Item Name)</label>
-                    <input v-model="editForm.name" type="text" placeholder="例如：救護車點班" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-blue-400">
-                </div>
-
-                <!-- 視覺化 Icon 選擇器 -->
-                <div class="space-y-1 border-t border-slate-100 pt-3 mt-1">
-                    <label class="text-[11px] font-black text-slate-500 flex justify-between">
-                        <span>圖示 (Icon)</span>
-                        <span class="text-blue-500">{{ editForm.icon }}</span>
-                    </label>
-                    <div class="grid grid-cols-6 gap-2 mt-2">
-                        <div v-for="ico in iconList" :key="ico" 
-                             @click="editForm.icon = ico"
-                             class="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer active:scale-90 transition-all border"
-                             :class="editForm.icon === ico ? 'bg-blue-600 text-white border-blue-700 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'">
-                            <i :class="['fa-solid', ico]" class="text-lg"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-1 border-t border-slate-100 pt-3 mt-1">
-                    <label class="text-[11px] font-black text-slate-500">狀態</label>
-                    <select v-model="editForm.locked" class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none">
-                        <option :value="false">🟢 開啟使用 (學員可見)</option>
-                        <option :value="true">🔒 鎖定隱藏 (敬請期待)</option>
-                    </select>
-                </div>
-                
-                <div class="space-y-1">
-                    <label class="text-[11px] font-black text-slate-500">準備器材 (選填)</label>
-                    <textarea v-model="editForm.equipment" placeholder="請輸入器材清單..." class="w-full bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5 text-sm font-bold text-slate-800 outline-none h-20"></textarea>
-                </div>
+                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500">項目名稱</label><input v-model="editForm.name" type="text" class="w-full bg-slate-50 border rounded-[10px] px-3 py-2.5 text-sm font-bold outline-none"></div>
+                <div class="space-y-2 border-t pt-3"><label class="text-[11px] font-black text-slate-500 flex justify-between"><span>圖示 (Icon)</span><span class="text-blue-500"><i :class="['fa-solid', editForm.icon]"></i></span></label><div class="grid grid-cols-9 gap-1.5"><div v-for="ico in iconList" :key="ico" @click="editForm.icon = ico" class="w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer border" :class="editForm.icon === ico ? 'bg-blue-600 text-white border-blue-700' : 'bg-slate-50 text-slate-400 border-slate-200'"><i :class="['fa-solid', ico]" class="text-sm"></i></div></div></div>
+                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500">狀態</label><select v-model="editForm.locked" class="w-full bg-slate-50 border rounded-[10px] px-3 py-2.5 text-sm font-bold outline-none"><option :value="false">🟢 開啟使用</option><option :value="true">🔒 鎖定隱藏</option></select></div>
+                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500">準備器材</label><textarea v-model="editForm.equipment" class="w-full bg-slate-50 border rounded-[10px] px-3 py-2.5 text-sm font-bold h-20 outline-none"></textarea></div>
             </div>
 
-            <!-- 區塊2: 評分步驟設定 (分組式結構) -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-2">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-list-check text-emerald-500"></i>
-                        <span class="font-black text-sm text-slate-700">評分步驟設定</span>
-                    </div>
-                </div>
-
-                <!-- 依照小分類 (SubItem) 迴圈產生的群組 -->
+                <div class="flex items-center justify-between border-b pb-2"><div class="flex items-center gap-2"><i class="fa-solid fa-list-check text-emerald-500"></i><span class="font-black text-sm text-slate-700">步驟與遊戲設定</span></div></div>
+                
                 <div v-for="(group, gIdx) in editForm.groupedSections" :key="'group-'+gIdx" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3 relative">
-                    
-                    <!-- 群組排序與刪除按鈕 -->
                     <div class="absolute -right-2 -top-2 flex gap-1 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
-                        <button @click="moveGroup(gIdx, -1)" :disabled="gIdx === 0" class="w-6 h-6 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-arrow-up text-xs"></i></button>
-                        <button @click="moveGroup(gIdx, 1)" :disabled="gIdx === editForm.groupedSections.length - 1" class="w-6 h-6 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-arrow-down text-xs"></i></button>
-                        <div class="w-px h-4 bg-slate-200 my-auto mx-0.5"></div>
-                        <button @click="removeGroup(gIdx)" class="w-6 h-6 rounded flex items-center justify-center text-rose-500 active:bg-rose-50"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button @click="moveGroup(gIdx, -1)" :disabled="gIdx === 0" class="w-6 h-6 rounded flex items-center justify-center text-slate-400"><i class="fa-solid fa-arrow-up text-xs"></i></button>
+                        <button @click="moveGroup(gIdx, 1)" :disabled="editForm.groupedSections && gIdx === editForm.groupedSections.length - 1" class="w-6 h-6 rounded flex items-center justify-center text-slate-400"><i class="fa-solid fa-arrow-down text-xs"></i></button>
+                        <button @click="removeGroup(gIdx)" class="w-6 h-6 rounded flex items-center justify-center text-rose-500"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>
-
-                    <div class="space-y-1 pt-1 pr-20">
-                        <label class="text-[10px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">小分類標題 (Sub Item)</label>
-                        <input v-model="group.subItem" type="text" placeholder="例如：頭部頸椎限制" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[14px] font-black text-slate-800 outline-none focus:border-emerald-400 mt-1">
-                    </div>
-
-                    <!-- 群組內的步驟 (Steps) -->
-                    <div class="space-y-2 border-t border-slate-200/60 pt-3">
-                        <div v-for="(txt, tIdx) in group.texts" :key="'text-'+gIdx+'-'+tIdx" class="flex gap-2 items-start">
-                            <!-- 步驟序號 -->
-                            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 mt-1.5 font-num font-black text-[10px]">{{ tIdx + 1 }}</div>
-                            <!-- 內容輸入框 -->
-                            <textarea v-model="group.texts[tIdx]" placeholder="輸入具體動作..." class="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] font-bold text-slate-700 outline-none h-16 focus:border-blue-400 leading-snug"></textarea>
-                            
-                            <!-- 步驟上下移與刪除 -->
-                            <div class="flex flex-col gap-1 shrink-0">
-                                <button @click="moveStep(group, tIdx, -1)" :disabled="tIdx === 0" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-caret-up"></i></button>
-                                <button @click="moveStep(group, tIdx, 1)" :disabled="tIdx === group.texts.length - 1" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-400 active:bg-slate-100 disabled:opacity-30"><i class="fa-solid fa-caret-down"></i></button>
-                                <button @click="removeStep(group, tIdx)" class="w-7 h-7 bg-white border border-slate-200 rounded flex items-center justify-center text-rose-400 active:bg-rose-50 mt-1"><i class="fa-solid fa-xmark"></i></button>
-                            </div>
-                        </div>
-                        
-                        <!-- 在此群組內新增步驟 -->
-                        <button @click="addTextToGroup(group)" class="w-full py-2 mt-2 rounded-lg border border-dashed border-blue-300 text-blue-500 bg-blue-50/50 font-black text-xs active:scale-95 transition-transform flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-plus"></i> 新增步驟
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 新增一個大群組 -->
-                <button @click="addGroup" class="w-full py-3.5 rounded-xl bg-slate-800 text-white font-black text-sm active:scale-95 transition-transform shadow-md flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-layer-group"></i> 新增下一個小分類
-                </button>
-            </div>
-        </div>
-
-        <div v-if="editorMode === 'edit'" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-bottom))] flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] z-50">
-            <button @click="editorMode = 'list'" class="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-[12px] font-black text-sm active:scale-95 transition-transform">取消</button>
-            <button @click="saveItem" :disabled="isEditorSaving" class="flex-[2] py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base shadow-lg shadow-blue-200 active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
-                <i v-if="!isEditorSaving" class="fa-solid fa-cloud-arrow-up"></i>
-                <i v-else class="fa-solid fa-spinner fa-spin"></i>
-                {{ isEditorSaving ? '儲存同步中...' : '儲存至資料庫' }}
-            </button>
-        </div>
-    </div>
-
-
-    <!-- 教官登入彈窗 -->
-    <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="isLoginModalOpen = false">
-        <div class="centered-modal bg-white">
-            <div class="px-5 py-5 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h2 class="text-[20px] font-black text-slate-800">教官模式登入</h2>
-                <button @click="isLoginModalOpen = false" class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 shrink-0">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-            <div class="modal-body bg-slate-50 space-y-4 pt-5 pb-6">
-                <div class="space-y-1">
-                    <label class="text-[11px] font-black text-slate-500 pl-1">選擇教官姓名</label>
-                    <div class="relative">
-                        <select v-model="loginForm.name" class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[14px] font-bold text-slate-800 outline-none appearance-none">
-                            <option value="" disabled>請選擇...</option>
-                            <option v-for="inst in instructorsList" :key="inst.name" :value="inst.name">{{ inst.name }}</option>
-                        </select>
-                        <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none text-xs"></i>
-                    </div>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[11px] font-black text-slate-500 pl-1">安全密碼</label>
-                    <input v-model="loginForm.password" type="password" placeholder="請輸入密碼" class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[14px] font-bold text-slate-800 outline-none focus:border-emerald-500">
-                </div>
-                <button @click="handleLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base shadow-md active:scale-95 transition-transform mt-4">
-                    解鎖教官功能
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 第一層：主彈窗 (列出小項與歷史紀錄) -->
-    <div class="modal-overlay" :class="{ active: isMainModalOpen }" @click.self="isMainModalOpen = false">
-        <div class="centered-modal">
-            
-            <div class="bg-white px-5 py-4 flex justify-between items-center shrink-0 border-b border-slate-100">
-                <h2 class="text-[20px] font-black text-slate-800 leading-tight pr-4 truncate">{{ activeItem?.name }}</h2>
-                <button @click="isMainModalOpen = false" class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 shrink-0">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-
-            <div class="modal-body bg-slate-50 pt-4 flex flex-col gap-5">
-                
-                <div v-if="activeItem?.equipment">
-                    <div @click="showEquipment = !showEquipment" class="flex items-center gap-2 cursor-pointer w-fit text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
-                        <i class="fa-solid fa-briefcase-medical text-sm"></i>
-                        <span class="font-black text-xs">準備器材</span>
-                        <i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="{'rotate-180': showEquipment}"></i>
-                    </div>
-                    <div v-show="showEquipment" class="mt-2 p-3 bg-white rounded-xl border border-emerald-100 text-[13px] font-bold text-slate-600 whitespace-pre-line shadow-sm">
-                        {{ activeItem?.equipment }}
-                    </div>
-                </div>
-
-                <div class="space-y-2.5">
-                    <div v-for="(section, secIdx) in itemSections" :key="secIdx" 
-                         @click="openSubModal(section)"
-                         class="bg-white border border-slate-200 rounded-[14px] flex justify-between items-center cursor-pointer active:bg-slate-50 transition-colors shadow-sm relative overflow-hidden">
-                        
-                        <div class="absolute left-0 top-0 bottom-0 w-1.5 transition-colors" :class="getSectionBarColor(section)"></div>
-                        <div class="px-5 py-4 flex-1 flex items-center gap-2">
-                            <span class="font-bold text-[15px] text-slate-700">{{ section.title }}</span>
-                            <span v-if="isSectionCompleted(section)" class="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">已完成</span>
-                        </div>
-                        <div class="pr-5 text-slate-300"><i class="fa-solid fa-chevron-right text-xs"></i></div>
-                    </div>
-                </div>
-
-                <div v-if="activeItemHistory.length > 0" class="border-t border-slate-200 pt-4 mt-2">
-                    <h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">歷史考核紀錄</h5>
-                    <div class="space-y-2">
-                        <div v-for="(log, idx) in activeItemHistory" :key="'log-'+idx" 
-                             class="flex justify-between items-center p-3 rounded-xl border shadow-sm bg-white"
-                             :class="log.status === 'Pass' ? 'border-emerald-100' : 'border-rose-100'">
-                            <div class="flex items-center gap-3">
-                                <i v-if="log.status === 'Pass'" class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i>
-                                <i v-else class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i>
-                                <div>
-                                    <div class="flex items-center gap-2 mb-0.5">
-                                        <span class="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-black border border-yellow-200 shadow-sm">
-                                            教官: {{ log.instructor }}
-                                        </span>
-                                        <span class="text-[9px] font-black px-1.5 py-0.5 rounded"
-                                              :class="log.status === 'Pass' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'">
-                                            {{ log.status === 'Pass' ? '通過' : '未過' }}
-                                        </span>
-                                    </div>
-                                    <span class="text-[10px] text-slate-400 font-bold font-num"><i class="fa-regular fa-clock"></i> {{ formatTime(log.timestamp) }}</span>
+                    <div class="space-y-1 pt-1 pr-20"><label class="text-[10px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">小分類標題</label><input v-model="group.subItem" type="text" class="w-full bg-white border rounded-lg px-2.5 py-2 text-[14px] font-black outline-none mt-1"></div>
+                    <div class="space-y-2 border-t pt-3">
+                        <div v-for="(step, sIdx) in group.steps" :key="'step-'+gIdx+'-'+sIdx" class="bg-white border rounded-xl p-2.5 space-y-4">
+                            <div class="flex gap-2 items-start">
+                                <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 mt-1.5 font-num font-black text-[10px]">{{ sIdx + 1 }}</div>
+                                <textarea v-model="step.text" placeholder="輸入步驟說明文字..." class="flex-1 bg-slate-50 border rounded-lg px-2.5 py-2 text-[13px] font-bold h-16 outline-none"></textarea>
+                                <div class="flex flex-col gap-1 shrink-0">
+                                    <button @click="moveStep(group, sIdx, -1)" :disabled="sIdx === 0" class="w-7 h-7 bg-white border rounded flex items-center justify-center text-slate-400"><i class="fa-solid fa-caret-up"></i></button>
+                                    <button @click="moveStep(group, sIdx, 1)" :disabled="sIdx === group.steps.length - 1" class="w-7 h-7 bg-white border rounded flex items-center justify-center text-slate-400"><i class="fa-solid fa-caret-down"></i></button>
+                                    <button @click="removeStep(group, sIdx)" class="w-7 h-7 bg-white border rounded flex items-center justify-center text-rose-400 mt-1"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                             </div>
-                            <div class="text-2xl font-black font-num" :class="log.status === 'Pass' ? 'text-emerald-600' : 'text-rose-600'">
-                                {{ log.score }}
+
+                            <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 ml-8">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa-solid fa-gamepad text-indigo-500"></i>
+                                        <span class="text-[12px] font-black text-indigo-700">🎮 抽卡遊戲模式</span>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" v-model="step.isGameMode" class="sr-only peer">
+                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                                    </label>
+                                </div>
+                                <div v-if="step.isGameMode" class="space-y-4 mt-3">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1">
+                                            <label class="text-[10px] font-black text-slate-500 pl-1">隨機抽取張數</label>
+                                            <input type="number" v-model.number="step.gamePick" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-sm font-num outline-none text-indigo-700">
+                                        </div>
+                                        <div class="space-y-1">
+                                            <label class="text-[10px] font-black text-slate-500 pl-1">挑戰倒數秒數</label>
+                                            <input type="number" v-model.number="step.gameTimer" class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-sm font-num outline-none text-indigo-700">
+                                        </div>
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label class="text-[10px] font-black text-slate-500 pl-1">使用的等級題庫 (可複選)</label>
+                                        <div class="flex flex-wrap gap-2">
+                                            <label v-for="lv in ['S+', 'S', 'A', 'B']" :key="lv" class="flex items-center gap-1.5 bg-white border rounded-lg px-3 py-1.5 cursor-pointer shadow-sm">
+                                                <input type="checkbox" :value="lv" v-model="step.gamePool" class="w-3 h-3 rounded">
+                                                <span class="text-xs font-black" :class="getDifficultyColor(lv)">{{ lv }} 級</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="!step.isGameMode" class="pl-8 space-y-2">
+                                <div v-if="step.images && step.images.length > 0" class="flex flex-wrap gap-2">
+                                    <div v-for="(imgUrl, imgIdx) in step.images" :key="imgIdx" class="relative flex flex-col items-center gap-1">
+                                        <img :src="imgUrl" class="w-24 h-24 rounded-xl border object-cover shadow-sm" />
+                                        <button @click="removeStepImage(group, sIdx, imgIdx, imgUrl)" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                </div>
+                                <label class="flex items-center gap-1.5 text-[11px] font-black text-slate-400 cursor-pointer bg-slate-50 border border-dashed rounded-lg px-3 py-2 w-fit">
+                                    <i class="fa-solid fa-image"></i> 上傳教學圖片
+                                    <input type="file" accept="image/*" multiple class="hidden" @change="e => { uploadStepImages(group, sIdx, e.target.files); e.target.value = ''; }">
+                                </label>
                             </div>
                         </div>
+                        <button @click="addStepToGroup(group)" class="w-full py-2 mt-2 rounded-lg border border-dashed border-blue-300 text-blue-500 bg-blue-50/50 font-black text-xs flex items-center justify-center gap-1"><i class="fa-solid fa-plus"></i> 新增步驟</button>
                     </div>
                 </div>
-
+                <button @click="addGroup" class="w-full py-3.5 rounded-xl bg-slate-800 text-white font-black text-sm shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-layer-group"></i> 新增下一個小分類</button>
             </div>
+        </div>
 
-            <div class="bg-white border-t border-slate-100 p-5 shrink-0 relative">
-                <div class="flex justify-between items-center mb-4 px-1">
-                    <span class="text-sm font-black text-slate-500">目前得分 (95分及格)</span>
-                    <span class="text-[32px] font-black font-num transition-colors leading-none" :class="liveScore >= 95 ? 'text-emerald-600' : 'text-rose-600'">
-                        {{ liveScore }}
-                    </span>
+        <div v-if="editorMode === 'edit'" class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 pb-[calc(1rem+var(--safe-bottom))] flex gap-3 shadow-lg z-50">
+            <button @click="cancelEdit" class="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-[12px] font-black text-sm">取消</button>
+            <button @click="saveItem" :disabled="isEditorSaving" class="flex-[2] py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base shadow-lg disabled:opacity-50">儲存資料庫</button>
+        </div>
+
+        <div v-if="editorMode === 'gallery'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
+            <div class="p-4 bg-white border-b flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-black text-slate-800"><i class="fa-solid fa-images text-emerald-500 mr-2"></i>抽卡模式圖庫管理</h3>
                 </div>
-
-                <input v-model="evalRemarks" type="text" placeholder="輸入評語 (選填)..." class="w-full bg-white border border-slate-200 rounded-[12px] px-4 py-3.5 text-[13px] font-bold focus:outline-none focus:border-emerald-500 mb-4 shadow-sm">
-
-                <button @click="submitGrade" :disabled="isSubmitting" class="w-full py-3.5 bg-[#059669] text-white rounded-[12px] font-black text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2">
-                    <i v-if="!isSubmitting" class="fa-solid fa-save"></i>
-                    <i v-else class="fa-solid fa-spinner fa-spin"></i>
-                    {{ isSubmitting ? '儲存中...' : '提交成績' }}
-                </button>
-                
-                <div class="text-center mt-3">
-                    <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-                        正在評核: <span class="font-black text-emerald-600">{{ selectedStudent }}</span>
-                    </span>
+                <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border">
+                    <select v-model="currentUploadDifficulty" class="bg-white border rounded-lg px-3 py-2 text-xs font-black outline-none shrink-0">
+                        <option value="S+">S+ 級</option>
+                        <option value="S">S 級</option>
+                        <option value="A">A 級</option>
+                        <option value="B">B 級</option>
+                    </select>
+                    <label class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-black cursor-pointer active:scale-95 text-center">
+                        <i class="fa-solid fa-upload mr-1"></i> 批量匯入此等級
+                        <input type="file" multiple accept="image/*" class="hidden" @change="e => uploadToCentralGallery(e.target.files)">
+                    </label>
                 </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <div v-for="(img, idx) in centralGallery" :key="idx" class="relative group aspect-square">
+                        <img :src="img.url" class="w-full h-full object-cover rounded-xl border-2 border-white shadow-sm">
+                        <div class="absolute top-1 left-1 px-1.5 py-0.5 rounded-lg bg-black/60 text-white text-[9px] font-black backdrop-blur-sm" :class="getDifficultyColor(img.difficulty)">{{ img.difficulty }}</div>
+                        <button @click="deleteFromCentralGallery(img)" class="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-xs shadow-md"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+                <div v-if="centralGallery.length === 0" class="flex flex-col items-center justify-center py-20 text-slate-400">
+                    <i class="fa-solid fa-folder-open text-4xl mb-2"></i>
+                    <p class="text-xs font-bold">目前資料庫沒有記錄，請點擊上方匯入</p>
+                </div>
+            </div>
+            <div class="p-4 bg-white border-t">
+                <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm">完成並返回</button>
             </div>
         </div>
     </div>
 
-    <!-- 第二層：子彈窗 (細項評分對話框) -->
-    <div class="sub-modal-overlay" :class="{ active: activeSubModal !== null }" @click.self="activeSubModal = null">
-        <div class="sub-centered-modal">
-            
-            <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 flex justify-between items-center shrink-0">
-                <h3 class="font-black text-slate-800 text-lg">{{ activeSubModal?.title }}</h3>
+    <!-- 教官登入 -->
+    <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="isLoginModalOpen = false">
+        <div class="centered-modal bg-white">
+            <div class="px-5 py-5 border-b flex justify-between items-center"><h2 class="text-[20px] font-black text-slate-800">教官模式登入</h2><button @click="isLoginModalOpen = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="modal-body bg-slate-50 space-y-4 pt-5 pb-6">
+                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500 pl-1">教官姓名</label><select v-model="loginForm.name" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none"><option value="" disabled>請選擇...</option><option v-for="inst in instructorsList" :key="inst.name" :value="inst.name">{{ inst.name }}</option></select></div>
+                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500 pl-1">密碼</label><input v-model="loginForm.password" type="password" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none"></div>
+                <button @click="handleLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base mt-4">解鎖權限</button>
             </div>
-            
+        </div>
+    </div>
+
+    <!-- 主考核彈窗 -->
+    <div class="modal-overlay" :class="{ active: isMainModalOpen }" @click.self="isMainModalOpen = false">
+        <div class="centered-modal">
+            <div class="bg-white px-5 py-4 flex justify-between items-center border-b"><h2 class="text-[20px] font-black text-slate-800 leading-tight pr-4 truncate">{{ activeItem?.name }}</h2><button @click="isMainModalOpen = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="modal-body bg-slate-50 pt-4 flex flex-col gap-5">
+                <div v-if="activeItem?.equipment"><div @click="showEquipment = !showEquipment" class="flex items-center gap-2 cursor-pointer w-fit text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100"><i class="fa-solid fa-briefcase-medical text-sm"></i><span class="font-black text-xs">準備器材</span><i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="{'rotate-180': showEquipment}"></i></div><div v-show="showEquipment" class="mt-2 p-3 bg-white rounded-xl border text-[13px] font-bold text-slate-600 shadow-sm">{{ activeItem?.equipment }}</div></div>
+                <div class="space-y-2.5"><div v-for="(section, secIdx) in itemSections" :key="secIdx" @click="openSubModal(section)" class="bg-white border rounded-[14px] flex justify-between items-center cursor-pointer relative overflow-hidden"><div class="absolute left-0 top-0 bottom-0 w-1.5" :class="getSectionBarColor(section)"></div><div class="px-5 py-4 flex-1 flex items-center gap-2"><span class="font-bold text-[15px] text-slate-700">{{ section.title }}</span><span v-if="isSectionCompleted(section)" class="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">已完成</span></div><div class="pr-5 text-slate-300"><i class="fa-solid fa-chevron-right text-xs"></i></div></div></div>
+                <div v-if="activeItemHistory.length > 0" class="border-t pt-4 mt-2"><h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">歷史考核紀錄</h5><div class="space-y-2"><div v-for="(log, idx) in activeItemHistory" :key="'log-'+idx" class="flex justify-between items-center p-3 rounded-xl border bg-white" :class="log.status === 'Pass' ? 'border-emerald-100' : 'border-rose-100'"><div class="flex items-center gap-3"><i v-if="log.status === 'Pass'" class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i><i v-else class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i><div><div class="flex items-center gap-2 mb-0.5"><span class="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-black">教官: {{ log.instructor }}</span><span class="text-[9px] font-black px-1.5 py-0.5 rounded" :class="log.status === 'Pass' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'">{{ log.status === 'Pass' ? '通過' : '未過' }}</span></div><span class="text-[10px] text-slate-400 font-bold font-num"><i class="fa-regular fa-clock"></i> {{ formatTime(log.timestamp) }}</span></div></div><div class="text-2xl font-black font-num" :class="log.status === 'Pass' ? 'text-emerald-600' : 'text-rose-600'">{{ log.score }}</div></div></div></div>
+            </div>
+            <div class="bg-white border-t p-5 shrink-0 relative"><div class="flex justify-between items-center mb-4 px-1"><span class="text-sm font-black text-slate-500">目前得分 (95分及格)</span><span class="text-[32px] font-black font-num" :class="liveScore >= 95 ? 'text-emerald-600' : 'text-rose-600'">{{ liveScore }}</span></div><input v-model="evalRemarks" type="text" placeholder="輸入評語 (選填)..." class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[13px] font-bold outline-none mb-4 shadow-sm"><button @click="submitGrade" :disabled="isSubmitting" class="w-full py-3.5 bg-[#059669] text-white rounded-[12px] font-black text-base shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"><i v-if="!isSubmitting" class="fa-solid fa-save"></i><i v-else class="fa-solid fa-spinner fa-spin"></i>{{ isSubmitting ? '儲存中...' : '提交成績' }}</button><div class="text-center mt-3"><span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">正在評核: <span class="font-black text-emerald-600">{{ selectedStudent }}</span></span></div></div>
+        </div>
+    </div>
+
+    <!-- 子步驟彈窗 (整合抽卡遊戲顯示) -->
+    <div class="sub-modal-overlay" :class="{ active: activeSubModal !== null }" @click.self="handleSubModalClose">
+        <div class="sub-centered-modal">
+            <div class="bg-slate-50 px-5 py-4 border-b flex justify-between items-center"><h3 class="font-black text-slate-800 text-lg">{{ activeSubModal?.title }}</h3></div>
             <div class="sub-modal-body space-y-4 bg-white">
-                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="'substep-'+step.globalIdx" class="space-y-3 border-b border-slate-100 pb-4 last:border-b-0 last:pb-0">
-                    
+                <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="'substep-'+step.globalIdx" class="space-y-3 border-b pb-4 last:border-b-0 last:pb-0">
                     <div class="flex items-start gap-3">
-                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]">
-                            {{ stepIdx + 1 }}
+                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]">{{ stepIdx + 1 }}</div>
+                        <div class="flex-1 pt-0.5">
+                            <p class="text-[14px] font-bold text-slate-700 leading-relaxed whitespace-pre-line">{{ step.text }}</p>
+                            
+                            <!-- ★ 抽卡遊戲 UI ★ -->
+                            <div v-if="step.isGameMode" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
+                                <div v-if="!gameState[step.globalIdx]?.active" class="text-center py-4">
+                                    <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500">
+                                        <i class="fa-solid fa-layer-group text-2xl"></i>
+                                    </div>
+                                    <button @click="startCardGame(step)" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95">
+                                        <i class="fa-solid fa-shuffle mr-2"></i>開始隨機抽卡挑戰
+                                    </button>
+                                    <div class="flex flex-col gap-1 mt-2">
+                                        <p class="text-[10px] text-indigo-400 font-bold">隨機抽取 {{ step.gamePick || 3 }} 張 / 倒數 {{ step.gameTimer || 60 }} 秒</p>
+                                        <div class="flex justify-center gap-1">
+                                            <span v-for="lv in (step.gamePool || [])" :key="lv" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-700 font-black">{{ lv }} 級</span>
+                                        </div>
+                                    </div>
+                                    <!-- 歷史成績顯示 -->
+                                    <div v-if="gradingState[step.globalIdx]?.timeUsed" class="mt-4 text-center">
+                                        <div class="inline-flex items-center gap-2 text-emerald-600 bg-emerald-100 py-1.5 px-4 rounded-full border border-emerald-200">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            <span class="text-[11px] font-black tracking-tight">挑戰完成：耗時 <span class="font-num text-[13px]">{{ gradingState[step.globalIdx].timeUsed }}</span> 秒</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="space-y-4">
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div v-for="(img, idx) in gameState[step.globalIdx].drawnCards" :key="idx" class="card-pop">
+                                            <img :src="img" class="w-full aspect-square rounded-xl border-2 border-white shadow-md object-cover" />
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col items-center py-2 border-t border-indigo-200 pt-4">
+                                        <div class="flex items-center gap-2 text-rose-500 mb-4" :class="{ 'timer-pulse': gameState[step.globalIdx].timeLeft < 10 }">
+                                            <i class="fa-solid fa-stopwatch text-xl"></i>
+                                            <span class="text-3xl font-black font-num">{{ gameState[step.globalIdx].timeLeft }}</span>
+                                            <span class="text-sm font-black">秒</span>
+                                        </div>
+                                        
+                                        <!-- ✨ 新增：完成按鈕 ✨ -->
+                                        <button @click="finishGameSuccess(step)" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-black text-[15px] shadow-lg shadow-emerald-200 active:scale-95 mb-3 flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-trophy"></i> 挑戰成功！(點此完成紀錄)
+                                        </button>
+
+                                        <button @click="stopGame(step.globalIdx)" class="text-[11px] font-black text-indigo-400 underline">重置遊戲</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 普通圖片 -->
+                            <template v-else>
+                                <div v-if="step.images?.length" class="mt-2 space-y-2">
+                                    <img v-for="(imgUrl, ii) in step.images" :key="ii" :src="imgUrl" class="w-full rounded-xl border object-cover shadow-sm max-h-48" />
+                                </div>
+                            </template>
                         </div>
-                        <p class="text-[14px] font-bold text-slate-700 leading-relaxed pt-0.5 whitespace-pre-line">{{ step.text }}</p>
                     </div>
-                    
+                    <!-- 控制按鈕 -->
                     <div class="flex gap-2 pl-9">
-                        <button @click="setStepStatus(step.globalIdx, true)" 
-                                class="flex-1 py-2.5 rounded-[10px] font-black text-[13px] border transition-all active:scale-95"
-                                :class="gradingState[step.globalIdx] === true ? 'bg-emerald-50 text-emerald-600 border-emerald-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'">
-                            <i class="fa-solid fa-check mr-1"></i> 標準正確
-                        </button>
-                        <button @click="setStepStatus(step.globalIdx, false)" 
-                                class="flex-1 py-2.5 rounded-[10px] font-black text-[13px] border transition-all active:scale-95"
-                                :class="gradingState[step.globalIdx] === false ? 'bg-rose-50 text-rose-600 border-rose-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'">
-                            <i class="fa-solid fa-xmark mr-1"></i> 未通過
-                        </button>
+                        <button @click="setStepStatus(step, true)" class="flex-1 py-2.5 rounded-[10px] font-black text-[13px] border transition-all" :class="gradingState[step.globalIdx]?.pass === true ? 'bg-emerald-50 text-emerald-600 border-emerald-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'"><i class="fa-solid fa-check mr-1"></i> 標準正確</button>
+                        <button @click="setStepStatus(step, false)" class="flex-1 py-2.5 rounded-[10px] font-black text-[13px] border transition-all" :class="gradingState[step.globalIdx]?.pass === false ? 'bg-rose-50 text-rose-600 border-rose-400 shadow-sm' : 'bg-white text-slate-400 border-slate-200'"><i class="fa-solid fa-xmark mr-1"></i> 未通過</button>
                     </div>
                 </div>
             </div>
-
-            <div class="p-4 border-t border-slate-100 bg-white shrink-0">
-                <button @click="activeSubModal = null" class="w-full bg-slate-800 text-white py-3.5 rounded-[12px] font-black text-[15px] active:scale-95 transition-transform shadow-md">
-                    完成並返回
-                </button>
-            </div>
-            
+            <div class="p-4 border-t bg-white shrink-0"><button @click="handleSubModalClose" class="w-full bg-slate-800 text-white py-3.5 rounded-[12px] font-black active:scale-95 transition-transform shadow-md">完成並返回</button></div>
         </div>
     </div>
 
@@ -560,10 +480,10 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { createApp, ref, computed, watch, onMounted, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js";
+    import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+    import { createApp, ref, computed, watch, onMounted } from "https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js";
 
-    // ★★★ 替換為你的 Firebase Config ★★★
     const firebaseConfig = {
         apiKey: "AIzaSyB5ANwObcAu3Q2Zd077i_WV2Vn1ZfEanlk",
         authDomain: "ems-passport-2024.firebaseapp.com",
@@ -575,519 +495,293 @@
 
     const fireApp = initializeApp(firebaseConfig);
     const db = getFirestore(fireApp);
+    const storage = getStorage(fireApp);
 
-    const colorThemes = [
-        { bg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-700' }, { bg: 'bg-indigo-600', text: 'text-indigo-600', border: 'border-indigo-700' },
-        { bg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-700' }, { bg: 'bg-rose-600', text: 'text-rose-600', border: 'border-rose-700' },
-        { bg: 'bg-amber-500', text: 'text-amber-600', border: 'border-amber-600' }, { bg: 'bg-cyan-600', text: 'text-cyan-600', border: 'border-cyan-700' }
-    ];
-
-    const CATEGORY_ORDER = ['基本技能', '呼吸道管理', '呼吸管理', '現場處置', '外科器材運用', '運送患者及搬運', '內科器材運用', '內外科流程', '特殊情形'];
-
-    // 提供給編輯器的可用 Icon 列表
-    const ICON_LIST = [
-        'fa-truck-medical', 'fa-lungs', 'fa-mask-ventilator', 'fa-person-falling-burst', 
-        'fa-kit-medical', 'fa-wheelchair', 'fa-heart-pulse', 'fa-syringe', 
-        'fa-stethoscope', 'fa-band-aid', 'fa-bone', 'fa-user-doctor'
-    ];
+    const ALL_ICONS = ['fa-stethoscope', 'fa-lungs', 'fa-mask-ventilator', 'fa-person-falling-burst', 'fa-bone', 'fa-wheelchair', 'fa-heart-pulse', 'fa-truck-medical', 'fa-triangle-exclamation', 'fa-kit-medical', 'fa-syringe', 'fa-notes-medical', 'fa-user-doctor', 'fa-clipboard-list', 'fa-briefcase-medical', 'fa-ambulance', 'fa-heart', 'fa-plus'];
+    const DEFAULT_CAT_ORDER = {'基本技能':0,'呼吸道管理':1,'呼吸管理':2,'現場處置':3,'外科器材運用':4,'運送患者及搬運':5,'內科器材運用':6,'內外科流程':7,'特殊情形':8};
+    const colorThemes = [{bg:'bg-blue-600',text:'text-blue-600',border:'border-blue-700'},{bg:'bg-indigo-600',text:'text-indigo-600',border:'border-indigo-700'},{bg:'bg-emerald-600',text:'text-emerald-600',border:'border-emerald-700'},{bg:'bg-rose-600',text:'text-rose-600',border:'border-rose-700'},{bg:'bg-amber-500',text:'text-amber-600',border:'border-amber-600'},{bg:'bg-cyan-600',text:'text-cyan-600',border:'border-cyan-700'},{bg:'bg-purple-600',text:'text-purple-600',border:'border-purple-700'},{bg:'bg-pink-600',text:'text-pink-600',border:'border-pink-700'}];
 
     createApp({
         setup() {
-            const slider = ref(null);
-            const tabsScrollRef = ref(null);
-            const activeTab = ref(0); 
+            const slider = ref(null), tabsScrollRef = ref(null), activeTab = ref(0), isLoading = ref(true), isSubmitting = ref(false), isInstructorMode = ref(false), isLoginModalOpen = ref(false);
+            const loginForm = ref({ name: '', password: '' }), currentInstructorName = ref(''), isEditorOpen = ref(false), editorMode = ref('list'), isEditorSaving = ref(false), isNewCategory = ref(false), newCategoryName = ref(''), sessionUploadedUrls = ref([]);
+            const editForm = ref({ originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [] });
+            const iconList = computed(() => ALL_ICONS.slice(0, 18)), isMainModalOpen = ref(false), activeSubModal = ref(null), selectedStudent = ref('訪客'), usersList = ref([]), rawQuestions = ref([]), studentRecords = ref([]), editorCategories = ref([]), activeItem = ref(null), itemSections = ref([]), gradingState = ref([]), evalRemarks = ref(''), showEquipment = ref(false), toast = ref({ show: false, msg: '', icon: '', color: '' }), appConfirm = ref({ show: false, title: '', msg: '', onConfirm: null });
+
+            const centralGallery = ref([]); 
+            const currentUploadDifficulty = ref('S');
+            const gameState = ref({}); 
+
+            const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
+            const studentsList = computed(() => { const s = usersList.value.filter(u => !['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))); return s.length ? s : [{ uid: 'guest', name: '訪客' }]; });
+
+            const showToast = (msg, type = 'info') => { toast.value.msg = msg; toast.value.icon = type === 'success' ? 'fa-solid fa-circle-check' : (type === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-info-circle'); toast.value.color = type === 'success' ? '#34d399' : (type === 'warning' ? '#fbbf24' : '#60a5fa'); toast.value.show = true; setTimeout(() => toast.value.show = false, 2500); };
+            const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
+            const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
+
+            const fetchData = async () => { 
+                try { 
+                    const uSnap = await getDocs(collection(db, "passport_users")); 
+                    usersList.value = uSnap.docs.map(d => d.data()); 
+                    await fetchQuestions(true); 
+                    fetchCentralGallery(); 
+                } catch(e){} 
+            };
+            const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
             
-            const isLoading = ref(true);
-            const isSubmitting = ref(false);
-            
-            const isInstructorMode = ref(false);
-            const isLoginModalOpen = ref(false);
-            const loginForm = ref({ name: '', password: '' });
-            const currentInstructorName = ref('');
-
-            // ★ 題庫編輯器專用狀態
-            const isEditorOpen = ref(false);
-            const editorMode = ref('list'); // 'list' 或 'edit'
-            const isEditorSaving = ref(false);
-            const isNewCategory = ref(false);
-            const newCategoryName = ref('');
-            const iconList = ref(ICON_LIST);
-            
-            const editForm = ref({
-                originalDocId: null,
-                category: '',
-                name: '',
-                icon: 'fa-clipboard-list',
-                locked: false,
-                equipment: '',
-                groupedSections: [] // 新的編輯器資料結構： [{ subItem: '名稱', texts: ['步驟1', '步驟2'] }]
-            });
-
-            const isMainModalOpen = ref(false);
-            const activeSubModal = ref(null); 
-
-            const instructorName = ref('');
-            const selectedStudent = ref('訪客');
-            
-            const usersList = ref([]);
-            const instructorsList = computed(() => {
-                return usersList.value.filter(u => {
-                    const r = String(u.role || '').toLowerCase();
-                    return r === 'instructor' || r.includes('教官') || r === 'admin' || r === '幹部';
-                });
-            });
-            
-            const studentsList = computed(() => {
-                const students = usersList.value.filter(u => {
-                    const r = String(u.role || '').toLowerCase();
-                    return !(r === 'instructor' || r.includes('教官') || r === 'admin' || r === '幹部');
-                });
-                return students.length > 0 ? students : [{ uid: 'guest', name: '訪客' }];
-            });
-
-            const rawQuestions = ref([]);
-            const studentRecords = ref([]);
-
-            const activeItem = ref(null);
-            const itemSections = ref([]); 
-            const gradingState = ref([]); 
-            const evalRemarks = ref('');
-            const showEquipment = ref(false);
-
-            const toast = ref({ show: false, msg: '', icon: '', color: '' });
-            const showToast = (msg, type = 'info') => {
-                toast.value.msg = msg;
-                if(type === 'success') { toast.value.icon = 'fa-solid fa-circle-check'; toast.value.color = '#34d399'; }
-                else if(type === 'warning') { toast.value.icon = 'fa-solid fa-triangle-exclamation'; toast.value.color = '#fbbf24'; }
-                else { toast.value.icon = 'fa-solid fa-info-circle'; toast.value.color = '#60a5fa'; }
-                toast.value.show = true;
-                setTimeout(() => { toast.value.show = false; }, 2500);
-            };
-
-            const appConfirm = ref({ show: false, title: '', msg: '', onConfirm: null });
-            const showAppConfirm = (title, msg, onConfirmCallback) => {
-                appConfirm.value = { 
-                    show: true, title, msg, 
-                    onConfirm: () => {
-                        appConfirm.value.show = false;
-                        if(onConfirmCallback) onConfirmCallback();
-                    }
-                };
-            };
-
-            const formatTime = (isoString) => {
-                if (!isoString) return '';
-                const d = new Date(isoString);
-                const pad = (n) => String(n).padStart(2, '0');
-                return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            };
-
-            const fetchData = async () => {
-                try {
-                    const uSnap = await getDocs(collection(db, "passport_users"));
-                    usersList.value = uSnap.docs.map(d => d.data());
-                    
-                    if (studentsList.value.length > 0) {
-                        selectedStudent.value = studentsList.value[0].name; 
-                    }
-                    await fetchQuestions();
-                } catch (error) {
-                    console.error("讀取失敗:", error);
-                }
-            };
-
-            const fetchQuestions = async () => {
-                const qSnap = await getDocs(collection(db, "passport_questions"));
-                rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-            };
-
-            watch(selectedStudent, (newName) => {
-                if (!newName) return;
-                isLoading.value = true;
-                const rQuery = query(collection(db, "passport_records"), where("userName", "==", newName));
-                onSnapshot(rQuery, (snap) => {
-                    studentRecords.value = snap.docs.map(d => d.data());
-                    isLoading.value = false;
-                });
-            }, { immediate: true });
-
-            onMounted(() => { fetchData(); });
-
-            const handleLogin = () => {
-                const user = instructorsList.value.find(u => u.name === loginForm.value.name);
-                if (user && user.password === loginForm.value.password) {
-                    isInstructorMode.value = true;
-                    currentInstructorName.value = user.name;
-                    isLoginModalOpen.value = false;
-                    loginForm.value.password = ''; 
-                    showToast("教官登入成功！已解鎖權限。", "success");
-                } else {
-                    showToast("登入失敗：密碼錯誤。", "warning");
-                }
-            };
-
-            const handleLogout = () => {
-                showAppConfirm('確認登出', '確定要退出教官模式嗎？', () => {
-                    isInstructorMode.value = false;
-                    currentInstructorName.value = '';
-                    isEditorOpen.value = false; 
-                    showToast("已退出教官模式。", "info");
+            const fetchCentralGallery = () => {
+                onSnapshot(collection(db, "passport_gallery"), (snap) => {
+                    centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                }, (err) => {
+                    console.error("Gallery Sync Error:", err);
                 });
             };
 
-            const handleItemClick = (item) => {
-                if (isInstructorMode.value) {
-                    openMainModal(item);
-                } else {
-                    showToast("學員模式僅能查看大標題，請由教官登入以進行評核。", "warning");
-                }
+            const getDifficultyColor = (lv) => {
+                const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' };
+                return map[lv] || 'text-slate-400';
             };
+
+            watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
+            onMounted(() => fetchData());
+
+            const handleLogin = () => { const u = instructorsList.value.find(i => i.name === loginForm.value.name); if(u && u.password === loginForm.value.password) { isInstructorMode.value = true; currentInstructorName.value = u.name; isLoginModalOpen.value = false; showToast("登入成功", "success"); } else showToast("密碼錯誤", "warning"); };
+            const handleLogout = () => showAppConfirm('登出', '確定退出教官模式？', () => { isInstructorMode.value = false; isEditorOpen.value = false; });
+            const handleItemClick = (i) => isInstructorMode.value ? openMainModal(i) : showToast("請由教官評核", "warning");
 
             const displayCategories = computed(() => {
-                const groups = {};
+                const g = {};
                 rawQuestions.value.forEach(q => {
-                    const catName = q.category;
-                    if (!groups[catName]) { groups[catName] = { id: catName, name: catName, icon: q.icon || 'fa-clipboard-list', locked: q.locked || false, items: [], total: 0, completed: 0 }; }
-                    const record = studentRecords.value.find(r => r.itemName === q.name);
-                    const status = record ? record.status : 'Pending';
-                    const score = record ? record.score : 0;
-                    groups[catName].items.push({ ...q, status, score });
-                    groups[catName].total++;
-                    if (status === 'Pass') groups[catName].completed++;
+                    const c = q.category; const w = q.catOrderWeight ?? (DEFAULT_CAT_ORDER[c] ?? 999);
+                    if(!g[c]) g[c] = { id: c, name: c, icon: q.icon || 'fa-clipboard-list', locked: !!q.locked, items: [], total: 0, completed: 0, orderWeight: w };
+                    const r = studentRecords.value.find(rec => rec.itemName === q.name);
+                    g[c].items.push({ ...q, status: r?.status || 'Pending', score: r?.score || 0, orderWeight: q.orderWeight ?? 99 });
+                    g[c].total++; if(r?.status === 'Pass') g[c].completed++;
                 });
-
-                let catsArray = Object.values(groups);
-                catsArray.sort((a, b) => {
-                    let indexA = CATEGORY_ORDER.indexOf(a.name);
-                    let indexB = CATEGORY_ORDER.indexOf(b.name);
-                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-                });
-
-                return catsArray.map((cat, index) => {
-                    const theme = colorThemes[index % colorThemes.length];
-                    return { ...cat, activeClass: `${theme.bg} text-white ${theme.border}`, textColor: theme.text };
-                });
+                return Object.values(g).sort((a,b) => a.orderWeight - b.orderWeight).map((cat, i) => { cat.items.sort((a,b) => a.orderWeight - b.orderWeight); const t = colorThemes[i % colorThemes.length]; return { ...cat, activeClass: `${t.bg} text-white ${t.border}`, textColor: t.text }; });
             });
 
-            // 提供給編輯器的大類別下拉選單選項
-            const existingCategories = computed(() => {
-                return displayCategories.value.map(c => c.name);
-            });
+            const updateEditorCategories = () => editorCategories.value = JSON.parse(JSON.stringify(displayCategories.value));
+            const existingCategories = computed(() => displayCategories.value.map(c => c.name));
+            const totalProgress = computed(() => { let c = displayCategories.value.reduce((s, a) => s + a.completed, 0), t = displayCategories.value.reduce((s, a) => s + a.total, 0); return t ? Math.round((c/t)*100) : 0; });
 
-            const totalProgress = computed(() => {
-                let completed = displayCategories.value.reduce((sum, cat) => sum + cat.completed, 0);
-                let total = displayCategories.value.reduce((sum, cat) => sum + cat.total, 0);
-                return total === 0 ? 0 : Math.round((completed / total) * 100);
-            });
-
-            const syncTabScroll = (index) => {
-                nextTick(() => {
-                    if (!tabsScrollRef.value) return;
-                    const tabEls = tabsScrollRef.value.querySelectorAll('.tab-item');
-                    if (tabEls[index]) tabEls[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                });
-            };
-
-            const scrollToTab = (index) => {
-                if (!slider.value || (index > 0 && displayCategories.value[index - 1].locked)) return;
-                slider.value.scrollTo({ left: slider.value.clientWidth * index, behavior: "smooth" });
-                activeTab.value = index;
-                syncTabScroll(index);
-            };
-
-            const onSliderScroll = () => {
-                if (!slider.value) return;
-                const index = Math.round(slider.value.scrollLeft / slider.value.clientWidth);
-                if (index !== activeTab.value) {
-                    activeTab.value = index;
-                    syncTabScroll(index);
-                }
-            };
+            const scrollToTab = (i) => { slider.value?.scrollTo({ left: slider.value.clientWidth * i, behavior: "smooth" }); activeTab.value = i; };
+            const onSliderScroll = () => { if(!slider.value) return; const i = Math.round(slider.value.scrollLeft / slider.value.clientWidth); if(i !== activeTab.value) activeTab.value = i; };
 
             const openMainModal = (item) => {
-                activeItem.value = item;
-                const sectionsMap = {};
-                let globalIdxCounter = 0;
+                activeItem.value = item; const secMap = {}; let gIdx = 0;
+                item.steps?.forEach(s => { const t = s.subItem || item.name; if(!secMap[t]) secMap[t] = { title: t, steps: [] }; secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); });
+                itemSections.value = Object.values(secMap); 
+                gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: null }));
+                gameState.value = {};
+                const r = studentRecords.value.find(rec => rec.itemName === item.name);
+                if(r?.details) try { 
+                    const p = JSON.parse(r.details); 
+                    p.forEach((d, idx) => { if(gradingState.value[idx]) { gradingState.value[idx].pass = d.pass; gradingState.value[idx].timeUsed = d.timeUsed; } });
+                } catch(e){}
+                evalRemarks.value = r?.remarks || ''; isMainModalOpen.value = true;
+            };
+
+            const openSubModal = (s) => activeSubModal.value = s;
+            
+            const setStepStatus = (step, isPass) => {
+                const idx = step.globalIdx;
+                const state = gradingState.value[idx];
+                const game = gameState.value[idx];
                 
-                if (item.steps && Array.isArray(item.steps)) {
-                    item.steps.forEach(step => {
-                        const secTitle = step.subItem || item.name;
-                        if (!sectionsMap[secTitle]) { sectionsMap[secTitle] = { title: secTitle, steps: [] }; }
-                        sectionsMap[secTitle].steps.push({ ...step, globalIdx: globalIdxCounter });
-                        globalIdxCounter++;
-                    });
+                // 如果在遊戲進行中直接手動按按鈕
+                if(game && game.active) {
+                    if(isPass) {
+                        state.timeUsed = step.gameTimer - game.timeLeft;
+                    }
+                    stopGame(idx);
                 }
+
+                state.pass = state.pass === isPass ? null : isPass;
+                if(state.pass === null) state.timeUsed = null;
+            };
+
+            const liveScore = computed(() => { const t = gradingState.value.length; if(!t) return 100; const ok = gradingState.value.filter(v => v.pass === true).length; return Math.round((ok/t)*100); });
+            const getSectionBarColor = (s) => { const st = s.steps.map(st => gradingState.value[st.globalIdx]?.pass); return st.includes(false) ? 'bg-rose-500' : (st.every(v => v === true) ? 'bg-emerald-500' : 'bg-slate-200'); };
+            const isSectionCompleted = (s) => s.steps.every(st => gradingState.value[st.globalIdx]?.pass === true);
+            const activeItemHistory = computed(() => activeItem.value ? [...(studentRecords.value.find(r => r.itemName === activeItem.value.name)?.history || [])].reverse() : []);
+
+            // ★ 抽卡遊戲邏輯 ★
+            const startCardGame = (step) => {
+                const count = step.gamePick || 3;
+                const pools = step.gamePool && step.gamePool.length > 0 ? step.gamePool : ['S+', 'S', 'A', 'B'];
+                const pool = centralGallery.value.filter(img => pools.includes(img.difficulty)).map(i => i.url);
                 
-                itemSections.value = Object.values(sectionsMap);
-                gradingState.value = new Array(globalIdxCounter).fill(null);
+                if(pool.length < count) { showToast(`指定圖庫圖片不足(庫存:${pool.length}/需:${count})`, "warning"); return; }
+                const drawn = [...pool].sort(() => 0.5 - Math.random()).slice(0, count);
                 
-                const pastRecord = studentRecords.value.find(r => r.itemName === item.name);
-                if (pastRecord && pastRecord.details) {
-                    try {
-                        const parsed = JSON.parse(pastRecord.details);
-                        if (Array.isArray(parsed) && parsed.length === globalIdxCounter) {
-                            gradingState.value = parsed.map(d => d.pass); 
-                        }
-                    } catch(e) {}
+                gameState.value[step.globalIdx] = { active: true, drawnCards: drawn, timeLeft: step.gameTimer || 60, interval: null };
+                gameState.value[step.globalIdx].interval = setInterval(() => {
+                    const s = gameState.value[step.globalIdx];
+                    if(!s || !s.active) { clearInterval(s?.interval); return; }
+                    s.timeLeft--;
+                    if(s.timeLeft <= 0) {
+                        clearInterval(s.interval);
+                        s.active = false;
+                        setStepStatus(step, false); 
+                        showToast("時間到！自動判定未通過", "warning");
+                    }
+                }, 1000);
+            };
+
+            const finishGameSuccess = (step) => {
+                const gIdx = step.globalIdx;
+                const s = gameState.value[gIdx];
+                if(s && s.active) {
+                    const timeUsed = (step.gameTimer || 60) - s.timeLeft;
+                    gradingState.value[gIdx].timeUsed = timeUsed;
+                    gradingState.value[gIdx].pass = true;
+                    stopGame(gIdx);
+                    showToast(`完成挑戰！耗時 ${timeUsed} 秒`, "success");
                 }
-
-                evalRemarks.value = pastRecord?.remarks || '';
-                isMainModalOpen.value = true;
             };
 
-            const openSubModal = (section) => { activeSubModal.value = section; };
-
-            const setStepStatus = (index, status) => {
-                if (gradingState.value[index] === status) gradingState.value[index] = null;
-                else gradingState.value[index] = status;
+            const stopGame = (gIdx) => {
+                const s = gameState.value[gIdx];
+                if(s) { clearInterval(s.interval); s.active = false; }
             };
 
-            const liveScore = computed(() => {
-                const total = gradingState.value.length;
-                if (total === 0) return 100;
-                const passed = gradingState.value.filter(s => s === true).length;
-                return Math.round((passed / total) * 100);
-            });
-
-            const getSectionBarColor = (section) => {
-                if (!section.steps || section.steps.length === 0) return 'bg-slate-200';
-                const statuses = section.steps.map(s => gradingState.value[s.globalIdx]);
-                if (statuses.includes(false)) return 'bg-rose-500';
-                if (statuses.every(s => s === true)) return 'bg-emerald-500';
-                return 'bg-slate-200';
+            const handleSubModalClose = () => {
+                Object.keys(gameState.value).forEach(idx => stopGame(idx));
+                activeSubModal.value = null;
             };
-
-            const isSectionCompleted = (section) => {
-                if (!section.steps || section.steps.length === 0) return false;
-                return section.steps.every(s => gradingState.value[s.globalIdx] === true);
-            };
-
-            const activeItemHistory = computed(() => {
-                if (!activeItem.value) return [];
-                const record = studentRecords.value.find(r => r.itemName === activeItem.value.name);
-                if (record && record.history && Array.isArray(record.history)) {
-                    return [...record.history].reverse();
-                }
-                return [];
-            });
 
             const submitGrade = async () => {
-                if (!activeItem.value || isSubmitting.value) return;
-                isSubmitting.value = true;
+                if(!activeItem.value || isSubmitting.value) return; isSubmitting.value = true;
+                const score = liveScore.value, status = score >= 95 ? 'Pass' : 'Fail';
+                const past = studentRecords.value.find(r => r.itemName === activeItem.value.name);
+                let hist = [...(past?.history || [])]; hist.push({ status, score, instructor: currentInstructorName.value, timestamp: new Date().toISOString() });
+                try { 
+                    await setDoc(doc(db, "passport_records", `${selectedStudent.value}_${activeItem.value.name}`), { 
+                        userName: selectedStudent.value, itemName: activeItem.value.name, status, score, 
+                        instructor: currentInstructorName.value, remarks: evalRemarks.value, 
+                        details: JSON.stringify(gradingState.value), history: hist, timestamp: new Date().toISOString() 
+                    }); 
+                    isMainModalOpen.value = false; showToast("儲存成功", "success"); 
+                } catch(e){} finally { isSubmitting.value = false; }
+            };
 
-                const itemName = activeItem.value.name;
-                const userName = selectedStudent.value;
-                const docId = `${userName}_${itemName}`; 
+            const openGalleryManager = () => editorMode.value = 'gallery';
+            const uploadToCentralGallery = async (files) => {
+                if(!files?.length) return; 
+                const arr = Array.from(files); 
+                const targetLv = currentUploadDifficulty.value;
+                showToast(`正在匯入 ${arr.length} 張到 ${targetLv} 級...`, "info");
                 
-                const finalScore = liveScore.value;
-                const finalStatus = finalScore >= 95 ? 'Pass' : 'Fail';
-                const detailsArray = gradingState.value.map(val => ({ pass: val }));
-                
-                const pastRecord = studentRecords.value.find(r => r.itemName === itemName);
-                let historyArray = pastRecord && pastRecord.history ? [...pastRecord.history] : [];
-                
-                historyArray.push({
-                    status: finalStatus,
-                    score: finalScore,
-                    instructor: currentInstructorName.value,
-                    timestamp: new Date().toISOString()
-                });
-
                 try {
-                    await setDoc(doc(db, "passport_records", docId), {
-                        userName: userName, itemName: itemName, status: finalStatus, score: finalScore,
-                        instructor: currentInstructorName.value, remarks: evalRemarks.value,
-                        details: JSON.stringify(detailsArray), history: historyArray, timestamp: new Date().toISOString()
-                    });
-                    isMainModalOpen.value = false;
-                    showToast("✅ 成績儲存成功！", "success");
-                } catch (error) {
-                    showToast("❌ 儲存失敗: " + error.message, "warning");
-                } finally {
-                    isSubmitting.value = false;
-                }
-            };
-
-            // ==============================================
-            // ★ 題庫編輯器專用邏輯
-            // ==============================================
-            const openEditorList = () => { 
-                editorMode.value = 'list'; 
-                isEditorOpen.value = true; 
-            };
-            const closeEditor = () => { isEditorOpen.value = false; };
-
-            const checkNewCategory = () => {
-                isNewCategory.value = (editForm.value.category === 'NEW_CATEGORY');
-                if (!isNewCategory.value) newCategoryName.value = '';
-            };
-
-            const createNewItem = () => {
-                editForm.value = { 
-                    originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', 
-                    groupedSections: [{ subItem: '', texts: [''] }] 
-                };
-                isNewCategory.value = false;
-                newCategoryName.value = '';
-                editorMode.value = 'edit';
-            };
-
-            const editItem = (item) => {
-                // 將 Firebase 扁平的 steps 陣列，轉換回編輯器需要的分組格式
-                const grouped = [];
-                let currentGroup = null;
-                let currentSub = null;
-                
-                if (item.steps && Array.isArray(item.steps)) {
-                    item.steps.forEach(s => {
-                        // 處理 Excel 舊資料可能沒有 subItem 的情況
-                        const sName = s.subItem || item.name; 
+                    await Promise.all(arr.map(async (file) => {
+                        const fileId = Date.now().toString() + Math.random().toString().slice(2,8);
+                        const path = `central_gallery/${fileId}.jpg`;
+                        const sRef = storageRef(storage, path);
                         
-                        if (sName !== currentSub || !currentGroup) {
-                            currentGroup = { subItem: sName, texts: [s.text] };
-                            grouped.push(currentGroup);
-                            currentSub = sName;
-                        } else {
-                            currentGroup.texts.push(s.text);
-                        }
-                    });
+                        await uploadBytes(sRef, file);
+                        const url = await getDownloadURL(sRef);
+                        
+                        await setDoc(doc(db, "passport_gallery", fileId), { 
+                            url, 
+                            path, 
+                            difficulty: targetLv,
+                            createdAt: new Date().toISOString()
+                        });
+                    }));
+                    showToast("匯入完成", "success");
+                } catch(e){ 
+                    console.error("Gallery Upload Failure:", e);
+                    showToast("匯入失敗，請檢查 Firebase 權限規則", "warning"); 
                 }
-                
-                editForm.value = {
-                    originalDocId: item.id,
-                    category: item.category,
-                    name: item.name,
-                    icon: item.icon || 'fa-clipboard-list',
-                    locked: item.locked || false,
-                    equipment: item.equipment || '',
-                    groupedSections: grouped.length ? grouped : [{ subItem: item.name, texts: [''] }]
-                };
-                
-                isNewCategory.value = false;
-                newCategoryName.value = '';
+            };
+            
+            const deleteFromCentralGallery = async (img) => {
+                showAppConfirm('刪除圖片', '確定從圖庫移除此照片？', async () => {
+                    try {
+                        await deleteObject(storageRef(storage, img.path));
+                        await deleteDoc(doc(db, "passport_gallery", img.id));
+                    } catch(e){}
+                });
+            };
+
+            const openEditorList = () => { updateEditorCategories(); editorMode.value = 'list'; isEditorOpen.value = true; };
+            const closeEditor = () => editorMode.value === 'edit' ? showAppConfirm('離開', '捨棄更動？', () => { cleanupUnsaved(); isEditorOpen.value = false; }) : isEditorOpen.value = false;
+            const cancelEdit = async () => { await cleanupUnsaved(); editorMode.value = 'list'; };
+            const cleanupUnsaved = async () => { if(sessionUploadedUrls.value.length) { await Promise.all(sessionUploadedUrls.value.map(u => deleteImageFromStorage(u))); sessionUploadedUrls.value = []; } };
+            const deleteImageFromStorage = async (u) => { try { const p = decodeURIComponent(u).match(/\/o\/(.+?)(\?|$)/)?.[1]; if(p) await deleteObject(storageRef(storage, p)); } catch(e){} };
+
+            const uploadStepImages = async (g, sIdx, files) => {
+                if(!files?.length) return; const arr = Array.from(files); showToast(`正在上傳 ${arr.length} 張...`, "info");
+                try {
+                    const urls = await Promise.all(arr.map(async (file) => {
+                        const p = `step_images/${Date.now()}_${Math.random().toString(36).substr(2,5)}.jpg`;
+                        const sRef = storageRef(storage, p); await uploadBytes(sRef, file); const url = await getDownloadURL(sRef);
+                        sessionUploadedUrls.value.push(url); return url;
+                    }));
+                    g.steps[sIdx].images = [...(g.steps[sIdx].images || []), ...urls];
+                    showToast("上傳完成", "success");
+                } catch(e){ showToast("失敗", "warning"); }
+            };
+
+            const removeStepImage = (g, sIdx, imgIdx, url) => { g.steps[sIdx].images.splice(imgIdx, 1); deleteImageFromStorage(url); sessionUploadedUrls.value = sessionUploadedUrls.value.filter(u => u !== url); };
+            const moveStepImage = (g, sIdx, idx, dir) => { const i = g.steps[sIdx].images; const t = idx + dir; if(t>=0 && t<i.length) [i[idx], i[t]] = [i[t], i[idx]]; };
+
+            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] }] }; editorMode.value = 'edit'; };
+            const editItem = (item) => {
+                sessionUploadedUrls.value = []; const grp = []; let cur = null;
+                item.steps?.forEach(s => { const n = s.subItem || item.name; if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } cur.steps.push({ text: s.text || '', images: s.images || [], isGameMode: !!s.isGameMode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'] }); });
+                editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] }] };
                 editorMode.value = 'edit';
             };
 
-            // 新增一個小分類 (Group)
-            const addGroup = () => {
-                editForm.value.groupedSections.push({ subItem: '', texts: [''] });
-            };
-
-            // 在特定小分類內新增一個步驟
-            const addTextToGroup = (group) => {
-                group.texts.push('');
-            };
-
-            // 刪除特定小分類 (Group)
-            const removeGroup = (idx) => {
-                if (confirm("確定要刪除這個小分類與裡面的所有步驟嗎？")) {
-                    editForm.value.groupedSections.splice(idx, 1);
-                }
-            };
-
-            // 刪除特定步驟
-            const removeStep = (group, txtIdx) => {
-                group.texts.splice(txtIdx, 1);
-                // 如果刪到沒步驟了，自動補一個空的，避免 UI 壞掉
-                if (group.texts.length === 0) group.texts.push('');
-            };
-
-            // 移動群組順序
-            const moveGroup = (idx, direction) => {
-                const targetIdx = idx + direction;
-                if (targetIdx >= 0 && targetIdx < editForm.value.groupedSections.length) {
-                    const temp = editForm.value.groupedSections[idx];
-                    editForm.value.groupedSections[idx] = editForm.value.groupedSections[targetIdx];
-                    editForm.value.groupedSections[targetIdx] = temp;
-                }
-            };
-
-            // 移動步驟順序
-            const moveStep = (group, idx, direction) => {
-                const targetIdx = idx + direction;
-                if (targetIdx >= 0 && targetIdx < group.texts.length) {
-                    const temp = group.texts[idx];
-                    group.texts[idx] = group.texts[targetIdx];
-                    group.texts[targetIdx] = temp;
-                }
-            };
+            const checkNewCategory = () => { if(editForm.value.category !== 'NEW_CATEGORY') { const ex = displayCategories.value.find(c => c.name === editForm.value.category); if(ex) editForm.value.icon = ex.icon; } };
 
             const saveItem = async () => {
-                const f = editForm.value;
-                const finalCategory = isNewCategory.value ? newCategoryName.value.trim() : f.category;
-
-                if (!finalCategory || !f.name) { 
-                    showToast("請填寫大類別與項目名稱", "warning"); 
-                    return; 
-                }
-                
-                isEditorSaving.value = true;
-                const newDocId = `${finalCategory}_${f.name}`;
-
-                // 將編輯器的分組結構，轉回 Firebase 需要的扁平 steps 陣列
-                const finalSteps = [];
-                f.groupedSections.forEach(g => {
-                    g.texts.forEach(t => {
-                        if (t.trim() !== '') {
-                            // 如果小分類沒寫，預設用項目名稱
-                            finalSteps.push({ 
-                                subItem: g.subItem.trim() || f.name, 
-                                text: t.trim() 
-                            });
-                        }
-                    });
-                });
-
+                const f = editForm.value; const c = isNewCategory.value ? newCategoryName.value.trim() : f.category;
+                if(!c || !f.name) return showToast("填寫資訊", "warning");
+                isEditorSaving.value = true; const nId = `${c}_${f.name}`;
+                const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.isGameMode).map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], isGameMode: !!s.isGameMode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'] })));
                 try {
-                    // 如果改了分類或名稱導致 ID 改變，要把舊的刪掉
-                    if (f.originalDocId && f.originalDocId !== newDocId) {
-                        await deleteDoc(doc(db, "passport_questions", f.originalDocId));
-                    }
-
-                    const dataToSave = {
-                        category: finalCategory, 
-                        name: f.name, 
-                        icon: f.icon || 'fa-clipboard-list', 
-                        locked: f.locked || false,
-                        equipment: f.equipment || '', 
-                        steps: finalSteps // 存入轉換後的平坦陣列
-                    };
-
-                    await setDoc(doc(db, "passport_questions", newDocId), dataToSave);
-                    showToast("✅ 題目儲存成功！", "success");
-                    await fetchQuestions();
-                    editorMode.value = 'list';
-                } catch (error) {
-                    showToast("❌ 儲存失敗：" + error.message, "warning");
-                } finally {
-                    isEditorSaving.value = false;
-                }
+                    const batch = writeBatch(db);
+                    if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
+                    let cw = f.catOrderWeight; const ex = displayCategories.value.find(cat => cat.name === c);
+                    if(isNewCategory.value) cw = displayCategories.value.length * 10; else if(ex) cw = ex.orderWeight;
+                    batch.set(doc(db, "passport_questions", nId), { category: c, name: f.name, icon: f.icon, locked: !!f.locked, equipment: f.equipment, orderWeight: f.orderWeight, catOrderWeight: cw, steps: stps });
+                    rawQuestions.value.filter(q => q.category === c && q.id !== f.originalDocId && q.id !== nId).forEach(q => {
+                        if(q.icon !== f.icon || q.catOrderWeight !== cw) batch.update(doc(db, "passport_questions", q.id), { icon: f.icon, catOrderWeight: cw });
+                    });
+                    await batch.commit(); sessionUploadedUrls.value = []; showToast("儲存成功", "success"); await fetchQuestions(true); editorMode.value = 'list';
+                } catch(e){ showToast("錯誤", "warning"); } finally { isEditorSaving.value = false; }
             };
 
-            const deleteItem = (item) => {
-                showAppConfirm('確認刪除', `確定要永久刪除「${item.name}」嗎？這個動作無法復原！`, async () => {
-                    try {
-                        await deleteDoc(doc(db, "passport_questions", item.id));
-                        showToast(`已刪除「${item.name}」`, "success");
-                        await fetchQuestions();
-                    } catch (error) {
-                        showToast("❌ 刪除失敗：" + error.message, "warning");
-                    }
-                });
+            const deleteItem = (i) => showAppConfirm('刪除', `確定刪除「${i.name}」？`, async () => { await deleteDoc(doc(db, "passport_questions", i.id)); fetchQuestions(true); });
+            const moveCategoryOrder = async (idx, dir) => {
+                const cs = editorCategories.value; const t = idx + dir; if(t < 0 || t >= cs.length) return;
+                const c1 = cs[idx], c2 = cs[t], w1 = c1.orderWeight, w2 = c2.orderWeight;
+                c1.orderWeight = w2; c2.orderWeight = w1; cs.splice(idx, 1, c2); cs.splice(t, 1, c1);
+                const b = writeBatch(db); c1.items.forEach(i => b.update(doc(db, "passport_questions", i.id), { catOrderWeight: w2 })); c2.items.forEach(i => b.update(doc(db, "passport_questions", i.id), { catOrderWeight: w1 }));
+                await b.commit(); fetchQuestions();
             };
+            const moveItemOrder = async (ci, ii, dir) => {
+                const c = editorCategories.value[ci]; const t = ii + dir; if(t < 0 || t >= c.items.length) return;
+                const i1 = c.items[ii], i2 = c.items[t], w1 = i1.orderWeight, w2 = i2.orderWeight;
+                i1.orderWeight = w2; i2.orderWeight = w1; c.items.splice(ii, 1, i2); c.items.splice(t, 1, i1);
+                const b = writeBatch(db); b.update(doc(db, "passport_questions", i1.id), { orderWeight: w2 }); b.update(doc(db, "passport_questions", i2.id), { orderWeight: w1 });
+                await b.commit(); fetchQuestions();
+            };
+
+            const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] });
+            const addStepToGroup = (g) => g.steps.push({ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] });
+            const removeGroup = (i) => editForm.value.groupedSections.splice(i, 1);
+            const removeStep = (g, i) => { g.steps.splice(i, 1); if(!g.steps.length) g.steps.push({ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }); };
+            const moveGroup = (i, d) => { const a = editForm.value.groupedSections, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
+            const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
             return {
-                isLoading, isSubmitting, toast, appConfirm,
-                isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick,
-                isMainModalOpen, activeSubModal,
-                slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll,
-                selectedStudent, studentsList, instructorsList,
-                displayCategories, existingCategories, totalProgress,
-                openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment,
-                gradingState, setStepStatus, liveScore, evalRemarks, submitGrade,
-                activeItemHistory, formatTime,
-                isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory,
-                openEditorList, closeEditor, createNewItem, editItem, addGroup, addTextToGroup, removeGroup, removeStep, moveGroup, moveStep, saveItem, deleteItem
+                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, moveStepImage, cancelEdit,
+                gameState, startCardGame, stopGame, finishGameSuccess, handleSubModalClose,
+                centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor
             };
         }
     }).mount('#app');
