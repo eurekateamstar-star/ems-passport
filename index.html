@@ -1,3 +1,4 @@
+--- START OF FILE ---
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -50,7 +51,7 @@
         .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; }
         .full-screen-modal.active { transform: translateY(0); }
 
-        .game-fullscreen-modal { position: fixed; inset: 0; background: #0f172a; z-index: 2000; display: flex; flex-direction: column; max-width: 450px; margin: 0 auto; transform: translateY(100%); opacity: 0; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .game-fullscreen-modal { position: fixed; inset: 0; background: #0f172a; z-index: 2000; display: flex; flex-direction: column; max-width: 450px; margin: 0 auto; transform: translateY(100%); opacity: 0; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
         .game-fullscreen-modal.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
 
         .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
@@ -58,6 +59,99 @@
         .timer-pulse { animation: timerPulse 1s infinite; color: #ef4444; }
         @keyframes timerPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
 
+        /* --- BVM 寫實視覺與接合優化 --- */
+        .bvm-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 200px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 1. 前端歧管與面罩組 (緊貼球體) */
+        .bvm-front-group { 
+            display: flex; 
+            align-items: center; 
+            z-index: 40; 
+            margin-right: -10px; /* 讓歧管插進球體 */
+        }
+        
+        /* 透明面罩 */
+        .bvm-mask-main {
+            width: 70px; height: 95px;
+            background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.25), rgba(255,255,255,0.05));
+            border: 1.5px solid rgba(255,255,255,0.3);
+            border-radius: 50% 50% 50% 50% / 40% 40% 70% 70%;
+            backdrop-filter: blur(2px);
+            box-shadow: inset 0 0 12px rgba(255,255,255,0.2);
+            transform: rotate(-10deg);
+        }
+
+        /* L 型閥門歧管 */
+        .bvm-valve-assembly {
+            display: flex; flex-direction: column; align-items: center; position: relative; margin-left: -5px;
+        }
+        .bvm-top-port {
+            width: 24px; height: 16px; background: #2563eb; 
+            border-radius: 50% 50% 2px 2px; border: 1px solid rgba(255,255,255,0.3);
+            margin-bottom: -1px; z-index: 2;
+        }
+        .bvm-valve-stem {
+            width: 40px; height: 40px;
+            background: linear-gradient(to right, #3b82f6, #1d4ed8);
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
+        }
+
+        /* 2. 中間藍色球體 */
+        .bvm-main-ball { 
+            width: 170px; height: 110px; 
+            background: radial-gradient(circle at 35% 30%, rgba(147, 197, 253, 0.85), rgba(30, 64, 175, 0.8)); 
+            border: 2.5px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%; 
+            box-shadow: 
+                inset 0 10px 20px rgba(255,255,255,0.3), 
+                0 15px 35px rgba(0,0,0,0.6); 
+            z-index: 30; 
+            transition: transform 0.08s cubic-bezier(0.2, 0, 0, 1); 
+            flex-shrink: 0;
+        }
+
+        /* 3. 後端屁股接頭與儲氣袋組 (緊貼球體) */
+        .bvm-rear-group { 
+            display: flex; 
+            align-items: center; 
+            z-index: 10; 
+            margin-left: -8px; /* 讓屁股接頭插進球體 */
+        }
+        
+        /* 屁股接頭 */
+        .bvm-butt-socket {
+            width: 32px; height: 38px;
+            background: #cbd5e1; border-radius: 4px; border: 1px solid #94a3b8;
+            flex-shrink: 0;
+            z-index: 20;
+            box-shadow: inset 2px 0 5px rgba(0,0,0,0.1);
+        }
+        
+        /* 儲氣袋 Reservoir Bag */
+        .bvm-reservoir-bag {
+            width: 160px; height: 80px;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, rgba(200,225,255,0.1) 100%);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 8px 100px 100px 8px;
+            margin-left: -5px; /* 連接到屁股接頭 */
+            backdrop-filter: blur(1.5px);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.1);
+            z-index: 10;
+        }
+
+        /* 點擊壓扁效果 */
+        .bvm-container:active .bvm-main-ball { 
+            transform: scaleY(0.6) scaleX(1.08); 
+        }
+        
         ::-webkit-scrollbar { width: 0px; background: transparent; }
     </style>
 </head>
@@ -289,8 +383,9 @@
                                         <label class="text-[10px] font-black text-slate-500 uppercase tracking-wider">模式設定 Mode Setting</label>
                                         <select v-model="step.mode" class="w-full bg-transparent font-black text-[13px] outline-none text-slate-800 appearance-none">
                                             <option value="none">標準模式 (一般考核)</option>
-                                            <option value="game">🎮 隨機抽卡遊戲</option>
+                                            <option value="game">🎮 隨機抽卡挑戰</option>
                                             <option value="timer">⏱️ 高精度計時考核</option>
+                                            <option value="bvm">🌬️ BVM 吹氣速率挑戰</option>
                                         </select>
                                     </div>
                                     <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
@@ -324,6 +419,23 @@
                                         <input type="number" step="0.1" v-model.number="step.timerLimit" class="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-amber-700">
                                     </div>
                                 </div>
+
+                                <div v-if="step.mode === 'bvm'" class="space-y-3 pt-2 border-t border-cyan-100/50">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="space-y-1">
+                                            <label class="text-[10px] font-black text-cyan-600">目標口氣數 (次)</label>
+                                            <input type="number" v-model.number="step.bvmGoal" class="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-cyan-700">
+                                        </div>
+                                        <div class="space-y-1">
+                                            <label class="text-[10px] font-black text-cyan-600">理想間距 (秒)</label>
+                                            <input type="number" step="0.1" v-model.number="step.bvmInterval" class="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-cyan-700">
+                                        </div>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[10px] font-black text-cyan-600">合格公差 ± (秒)</label>
+                                        <input type="number" step="0.01" v-model.number="step.bvmTolerance" class="w-full bg-white border border-cyan-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-cyan-700">
+                                    </div>
+                                </div>
                             </div>
 
                             <div v-if="step.mode === 'none'" class="pl-8 space-y-2">
@@ -354,7 +466,7 @@
         <div v-if="editorMode === 'gallery'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
             <div class="p-4 bg-white border-b flex flex-col gap-3">
                 <div class="flex justify-between items-center">
-                    <h3 class="font-black text-slate-800"><i class="fa-solid fa-images text-emerald-500 mr-2"></i>抽卡模式圖庫管理</h3>
+                    <h3 class="font-black text-slate-800"><i class="fa-solid fa-images text-emerald-500 mr-2"></i>抽卡圖庫管理</h3>
                 </div>
                 <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border">
                     <select v-model="currentUploadDifficulty" class="bg-white border rounded-lg px-3 py-2 text-xs font-black outline-none shrink-0">
@@ -424,71 +536,63 @@
                         <div class="flex-1 pt-0.5">
                             <p class="text-[14px] font-bold text-slate-700 leading-relaxed whitespace-pre-line">{{ step.text }}</p>
                             
+                            <!-- BVM 挑戰入口 UI -->
+                            <div v-if="step.mode === 'bvm'" class="mt-4 p-4 rounded-2xl bg-cyan-50 border border-cyan-100 text-center relative overflow-hidden">
+                                <div class="relative z-10">
+                                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-cyan-600"><i class="fa-solid fa-wind text-xl"></i></div>
+                                    <div class="mb-4">
+                                        <div class="flex justify-center items-end gap-1 mb-1">
+                                            <span class="text-4xl font-black font-num text-cyan-700 leading-none">{{ step.bvmGoal || 10 }}</span>
+                                            <span class="text-xs font-black text-cyan-600 pb-1">次吹氣</span>
+                                        </div>
+                                        <p class="text-[10px] font-bold text-slate-500 uppercase">目標間距: {{ (step.bvmInterval || 6.0).toFixed(1) }}s ± {{ step.bvmTolerance || 0.2 }}s</p>
+                                    </div>
+                                    <button @click="startBvmGame(step)" class="w-full bg-cyan-600 text-white py-3.5 rounded-xl font-black text-[13px] shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-play"></i> 開啟 BVM 挑戰全螢幕</button>
+                                    
+                                    <div v-if="gradingState[step.globalIdx]?.pass !== null" class="mt-3">
+                                        <button @click="showBvmHistory(gradingState[step.globalIdx])" 
+                                                class="px-4 py-2 rounded-full text-[10px] font-black uppercase shadow-sm flex items-center gap-2 mx-auto" 
+                                                :class="gradingState[step.globalIdx]?.pass ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'">
+                                            <i class="fa-solid fa-list-ul"></i>
+                                            {{ gradingState[step.globalIdx]?.pass ? '吹氣合格 (查看紀錄)' : '吹氣不合格 (查看紀錄)' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- 抽卡遊戲入口 UI -->
                             <div v-if="step.mode === 'game'" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
-                                <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500">
-                                    <i class="fa-solid fa-layer-group text-2xl"></i>
-                                </div>
-                                <button @click="startCardGame(step)" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95">
-                                    <i class="fa-solid fa-shuffle mr-2"></i>開始隨機抽卡挑戰
-                                </button>
+                                <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500"><i class="fa-solid fa-layer-group text-2xl"></i></div>
+                                <button @click="startCardGame(step)" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95"><i class="fa-solid fa-shuffle mr-2"></i>開始隨機抽卡挑戰</button>
                                 <div class="flex flex-col gap-1 mt-2">
                                     <p class="text-[10px] text-indigo-400 font-bold">隨機抽取 {{ step.gamePick || 3 }} 張 / 倒數 {{ step.gameTimer || 60 }} 秒</p>
-                                    <div class="flex justify-center gap-1">
-                                        <span v-for="lv in (step.gamePool || [])" :key="lv" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-700 font-black">{{ lv }} 級</span>
-                                    </div>
+                                    <div class="flex justify-center gap-1"><span v-for="lv in (step.gamePool || [])" :key="lv" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-700 font-black">{{ lv }} 級</span></div>
                                 </div>
-                                <!-- 歷史耗時顯示 (遊戲) -->
                                 <div v-if="gradingState[step.globalIdx]?.timeUsed !== 0" class="mt-4">
-                                    <div class="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border"
-                                         :class="gradingState[step.globalIdx]?.pass ? 'text-emerald-600 bg-emerald-100 border-emerald-200' : 'text-rose-600 bg-rose-100 border-rose-200'">
-                                        <i :class="gradingState[step.globalIdx]?.pass ? 'fa-solid fa-bolt' : 'fa-solid fa-triangle-exclamation'"></i>
-                                        <span class="text-[11px] font-black">
-                                            {{ gradingState[step.globalIdx]?.pass ? '挑戰成功' : '挑戰失敗 (超時)' }}：耗時 {{ gradingState[step.globalIdx].timeUsed.toFixed(2) }} 秒
-                                        </span>
-                                    </div>
+                                    <div class="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border" :class="gradingState[step.globalIdx]?.pass ? 'text-emerald-600 bg-emerald-100 border-emerald-200' : 'text-rose-600 bg-rose-100 border-rose-200'"><i :class="gradingState[step.globalIdx]?.pass ? 'fa-solid fa-bolt' : 'fa-solid fa-triangle-exclamation'"></i><span class="text-[11px] font-black">{{ gradingState[step.globalIdx]?.pass ? '挑戰成功' : '挑戰失敗 (超時)' }}：耗時 {{ gradingState[step.globalIdx].timeUsed.toFixed(2) }} 秒</span></div>
                                 </div>
                             </div>
 
                             <!-- 計時器考核入口 UI -->
                             <div v-if="step.mode === 'timer'" class="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-center relative overflow-hidden">
                                 <div class="relative z-10">
-                                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-amber-500">
-                                        <i class="fa-solid fa-stopwatch text-xl" :class="{ 'animate-pulse': !!stepTimers[step.globalIdx] }"></i>
-                                    </div>
+                                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-amber-500"><i class="fa-solid fa-stopwatch text-xl" :class="{ 'animate-pulse': !!stepTimers[step.globalIdx] }"></i></div>
                                     <div class="mb-3">
-                                        <span class="text-4xl font-black font-num transition-colors duration-200" 
-                                              :class="gradingState[step.globalIdx]?.timeUsed <= (step.timerLimit || 999) ? 'text-emerald-600' : 'text-rose-600'">
-                                            {{ gradingState[step.globalIdx]?.timeUsed?.toFixed(2) || '0.00' }}
-                                        </span>
+                                        <span class="text-4xl font-black font-num transition-colors duration-200" :class="gradingState[step.globalIdx]?.timeUsed <= (step.timerLimit || 999) ? 'text-emerald-600' : 'text-rose-600'">{{ gradingState[step.globalIdx]?.timeUsed?.toFixed(2) || '0.00' }}</span>
                                         <span class="text-[11px] font-black text-slate-400 ml-1">秒</span>
                                         <div class="text-[10px] font-bold text-slate-500 mt-1">合格限制：{{ (step.timerLimit || 0).toFixed(1) }} 秒內</div>
                                     </div>
-                                    
                                     <div class="flex gap-2">
-                                        <button v-if="!stepTimers[step.globalIdx]" @click="startStepTimer(step)" class="flex-1 bg-amber-500 text-white py-3 rounded-xl font-black text-[13px] shadow-lg active:scale-95 transition-all">
-                                            <i class="fa-solid fa-play mr-1"></i> 開始計時
-                                        </button>
-                                        <button v-else @click="stopStepTimer(step)" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-black text-[13px] shadow-lg active:scale-95">
-                                            <i class="fa-solid fa-stop mr-1"></i> 停止並存檔
-                                        </button>
-                                        <button @click="resetStepTimer(step)" class="w-12 bg-white border border-slate-200 text-slate-400 rounded-xl flex items-center justify-center active:bg-slate-50">
-                                            <i class="fa-solid fa-rotate-right text-xs"></i>
-                                        </button>
+                                        <button v-if="!stepTimers[step.globalIdx]" @click="startStepTimer(step)" class="flex-1 bg-amber-500 text-white py-3 rounded-xl font-black text-[13px] shadow-lg active:scale-95 transition-all"><i class="fa-solid fa-play mr-1"></i> 開始計時</button>
+                                        <button v-else @click="stopStepTimer(step)" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-black text-[13px] shadow-lg active:scale-95"><i class="fa-solid fa-stop mr-1"></i> 停止並存檔</button>
+                                        <button @click="resetStepTimer(step)" class="w-12 bg-white border border-slate-200 text-slate-400 rounded-xl flex items-center justify-center active:bg-slate-50"><i class="fa-solid fa-rotate-right text-xs"></i></button>
                                     </div>
-
-                                    <div v-if="gradingState[step.globalIdx]?.pass !== null && !stepTimers[step.globalIdx]" class="mt-3">
-                                        <p class="text-[10px] font-black uppercase tracking-widest" :class="gradingState[step.globalIdx]?.pass ? 'text-emerald-500' : 'text-rose-500'">
-                                            {{ gradingState[step.globalIdx]?.pass ? '合格：時間內完成' : '不合格：已超過時限' }}
-                                        </p>
-                                    </div>
+                                    <div v-if="gradingState[step.globalIdx]?.pass !== null && !stepTimers[step.globalIdx]" class="mt-3"><p class="text-[10px] font-black uppercase tracking-widest" :class="gradingState[step.globalIdx]?.pass ? 'text-emerald-500' : 'text-rose-500'">{{ gradingState[step.globalIdx]?.pass ? '合格：時間內完成' : '不合格：已超過時限' }}</p></div>
                                 </div>
                             </div>
 
                             <template v-else-if="step.mode === 'none'">
-                                <div v-if="step.images?.length" class="mt-2 space-y-2">
-                                    <img v-for="(imgUrl, ii) in step.images" :key="ii" :src="imgUrl" class="w-full rounded-xl border object-cover shadow-sm max-h-48" />
-                                </div>
+                                <div v-if="step.images?.length" class="mt-2 space-y-2"><img v-for="(imgUrl, ii) in step.images" :key="ii" :src="imgUrl" class="w-full rounded-xl border object-cover shadow-sm max-h-48" /></div>
                             </template>
                         </div>
                     </div>
@@ -503,60 +607,121 @@
         </div>
     </div>
 
-    <!-- 全螢幕遊戲挑戰室 -->
-    <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen }">
-        <header class="p-5 pb-3 flex justify-between items-start text-white">
-            <div class="pr-6">
-                <p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Card Challenge</p>
-                <h2 class="text-lg font-black leading-tight line-clamp-2">{{ activeGameStep?.text }}</h2>
+    <!-- BVM 歷史紀錄列表彈窗 -->
+    <div class="sub-modal-overlay" :class="{ active: activeHistoryData !== null }" @click.self="activeHistoryData = null">
+        <div class="sub-centered-modal bg-[#0f172a] text-white">
+            <div class="px-5 py-4 border-b border-white/10 flex justify-between items-center">
+                <h3 class="font-black text-lg text-cyan-400"><i class="fa-solid fa-clipboard-list mr-2"></i>吹氣紀錄明細</h3>
+                <button @click="activeHistoryData = null" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <button @click="stopGame(activeGameStep?.globalIdx)" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0"><i class="fa-solid fa-xmark"></i></button>
-        </header>
-
-        <div class="flex-1 overflow-hidden px-4 py-2 flex flex-col items-center justify-center">
-            <div v-if="activeGameStep && gameState[activeGameStep.globalIdx]" 
-                 class="grid gap-3 w-full max-h-full content-center"
-                 :class="[
-                    gameState[activeGameStep.globalIdx].drawnCards.length <= 1 ? 'grid-cols-1' : 
-                    gameState[activeGameStep.globalIdx].drawnCards.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'
-                 ]">
-                <div v-for="(img, idx) in gameState[activeGameStep.globalIdx].drawnCards" :key="idx" class="card-pop relative">
-                    <div class="aspect-square w-full rounded-2xl overflow-hidden border-2 border-white/10 shadow-xl bg-slate-800">
-                        <img :src="img" class="w-full h-full object-cover" />
+            <div class="sub-modal-body bg-slate-900/50 p-6">
+                <div class="space-y-3">
+                    <div v-for="(log, lIdx) in activeHistoryData?.bvmLogs" :key="lIdx" 
+                         class="flex justify-between items-center p-3 rounded-xl border border-white/5 bg-white/5">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-num text-[11px] text-slate-400">#{{ lIdx + 2 }}</span>
+                            <span class="font-black text-sm">間隔時間</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg font-black font-num" :class="log.isPass ? 'text-emerald-400' : 'text-rose-400'">{{ log.interval.toFixed(2) }}s</span>
+                            <i v-if="log.isPass" class="fa-solid fa-circle-check text-emerald-500"></i>
+                            <i v-else class="fa-solid fa-circle-xmark text-rose-500"></i>
+                        </div>
                     </div>
                 </div>
+            </div>
+            <div class="p-4 border-t border-white/10">
+                <button @click="activeHistoryData = null" class="w-full py-3.5 bg-slate-800 rounded-xl font-black text-sm uppercase tracking-widest">關閉紀錄</button>
             </div>
         </div>
+    </div>
 
-        <footer class="p-5 bg-slate-900/80 backdrop-blur-xl border-t border-white/10">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <i class="fa-solid fa-stopwatch text-xl" :class="[gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500 timer-pulse' : 'text-emerald-500']"></i>
-                    <div class="flex flex-col">
-                        <span class="text-3xl font-black font-num leading-none transition-colors duration-200" :class="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500' : 'text-emerald-500'">
-                            {{ activeGameStep ? Math.abs(gameState[activeGameStep.globalIdx]?.timeLeft).toFixed(2) : '0.00' }}
-                            <span class="text-xs ml-1 font-black">秒</span>
-                        </span>
-                        <span v-if="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0" class="text-[10px] font-black uppercase tracking-widest text-rose-400 mt-1">Overtime 超時中</span>
+    <!-- 遊戲挑戰全螢幕 (整合抽卡與 BVM) -->
+    <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen || isBvmModalOpen }">
+        
+        <!-- BVM 挑戰 UI -->
+        <template v-if="isBvmModalOpen">
+            <header class="p-5 pb-3 flex justify-between items-start text-white">
+                <div class="pr-6">
+                    <p class="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">BVM Challenge</p>
+                    <h2 class="text-lg font-black leading-tight line-clamp-1">{{ activeBvmStep?.text }}</h2>
+                </div>
+                <div class="flex flex-col items-end">
+                    <button @click="stopBvmGame" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0 mb-3"><i class="fa-solid fa-xmark"></i></button>
+                    <div class="text-right">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Elapsed Time</p>
+                        <p class="text-2xl font-black font-num text-white">{{ bvmState.totalElapsed.toFixed(1) }}s</p>
                     </div>
                 </div>
-                
-                <button v-if="activeGameStep" @click="toggleTimer(activeGameStep)" 
-                        class="px-5 py-2 rounded-xl font-black text-sm flex items-center gap-2 transition-all active:scale-95"
-                        :class="gameState[activeGameStep.globalIdx]?.isRunning ? 'bg-amber-500 text-white' : 'bg-indigo-600 text-white'">
-                    <i :class="gameState[activeGameStep.globalIdx]?.isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
-                    {{ gameState[activeGameStep.globalIdx]?.isRunning ? '暫探計時' : (gameState[activeGameStep.globalIdx]?.hasStarted ? '繼續計時' : '開始計時') }}
-                </button>
-            </div>
+            </header>
             
-            <button @click="finishGameSuccess(activeGameStep)" 
-                    :disabled="!activeGameStep || !gameState[activeGameStep.globalIdx]?.hasStarted"
-                    class="w-full py-4 rounded-2xl font-black text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                    :class="activeGameStep && gameState[activeGameStep.globalIdx]?.hasStarted ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'">
-                <i class="fa-solid fa-trophy"></i> 
-                {{ activeGameStep && gameState[activeGameStep.globalIdx]?.hasStarted ? '完成挑戰並考核' : '請先點擊「開始計時」' }}
-            </button>
-        </footer>
+            <div class="flex-1 flex flex-col items-center justify-between py-10 px-6">
+                <!-- 狀態指示器 -->
+                <div class="text-center">
+                    <p class="text-[12px] font-black uppercase tracking-[0.2em] mb-2" :class="bvmState.isStarted ? 'text-cyan-500' : 'text-slate-500'">{{ bvmState.isStarted ? 'Challenge in progress' : 'Ready to start' }}</p>
+                    <div class="flex items-baseline gap-2 justify-center">
+                        <span class="text-7xl font-black font-num text-white leading-none">{{ bvmState.count }}</span>
+                        <span class="text-xl font-black text-slate-500">/ {{ activeBvmStep?.bvmGoal }}</span>
+                    </div>
+                </div>
+
+                <!-- BVM 寫實視覺構造 (歧管與屁股接頭已接好) -->
+                <div class="relative flex items-center justify-center my-6">
+                    <!-- 反饋文字 -->
+                    <div v-if="bvmState.feedback" class="absolute -top-16 font-black text-2xl uppercase tracking-widest animate-bounce text-center whitespace-nowrap z-[100]" 
+                         :class="bvmState.feedback.includes('完美') ? 'text-emerald-500' : (bvmState.feedback.includes('太快') ? 'text-rose-500' : 'text-amber-500')">
+                        {{ bvmState.feedback }}
+                    </div>
+                    
+                    <div class="bvm-container" @click="handleBvmSqueeze">
+                        <!-- 前端：面罩 + L 閥歧管 -->
+                        <div class="bvm-front-group">
+                            <div class="bvm-mask-main"></div>
+                            <div class="bvm-valve-assembly">
+                                <div class="bvm-top-port"></div> 
+                                <div class="bvm-valve-stem"></div>
+                            </div>
+                        </div>
+
+                        <!-- 中間：呼吸球體 (縮放主體) -->
+                        <div class="bvm-main-ball"></div>
+
+                        <!-- 後端：屁股接頭 + 儲氣袋 -->
+                        <div class="bvm-rear-group">
+                            <div class="bvm-butt-socket"></div> 
+                            <div class="bvm-reservoir-bag"></div> 
+                        </div>
+                    </div>
+
+                    <p v-if="!bvmState.isStarted" class="absolute -bottom-16 text-cyan-400 font-bold text-xs animate-pulse">點擊球體開始首口吹氣</p>
+                </div>
+
+                <!-- 數據面板 -->
+                <div class="w-full grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/50 rounded-3xl p-5 border border-white/5 text-center">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-2">上口間距</p>
+                        <p class="text-4xl font-black font-num" :class="bvmState.lastIntervalIsPass ? 'text-emerald-500' : 'text-rose-500'">{{ bvmState.lastInterval.toFixed(2) }}<span class="text-xs ml-1">s</span></p>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-3xl p-5 border border-white/5 text-center">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-2">總合格數</p>
+                        <p class="text-4xl font-black font-num text-cyan-500">{{ bvmState.passCount }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="p-6 bg-slate-900 border-t border-white/10">
+                <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" @click="submitBvmResult" class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95">提交 BVM 考核結果</button>
+                <button v-else @click="resetBvmState" class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">重新開始挑戰</button>
+            </footer>
+        </template>
+
+        <!-- 抽卡遊戲 UI -->
+        <template v-if="isGameModalOpen">
+            <header class="p-5 pb-3 flex justify-between items-start text-white"><div class="pr-6"><p class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Card Challenge</p><h2 class="text-lg font-black leading-tight line-clamp-2">{{ activeGameStep?.text }}</h2></div><button @click="stopGame(activeGameStep?.globalIdx)" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0"><i class="fa-solid fa-xmark"></i></button></header>
+            <div class="flex-1 overflow-hidden px-4 py-2 flex flex-col items-center justify-center"><div v-if="activeGameStep && gameState[activeGameStep.globalIdx]" class="grid gap-3 w-full max-h-full content-center" :class="[ gameState[activeGameStep.globalIdx].drawnCards.length <= 1 ? 'grid-cols-1' : gameState[activeGameStep.globalIdx].drawnCards.length <= 4 ? 'grid-cols-2' : 'grid-cols-3' ]"><div v-for="(img, idx) in gameState[activeGameStep.globalIdx].drawnCards" :key="idx" class="card-pop relative"><div class="aspect-square w-full rounded-2xl overflow-hidden border-2 border-white/10 shadow-xl bg-slate-800"><img :src="img" class="w-full h-full object-cover" /></div></div></div></div>
+            <footer class="p-5 bg-slate-900/80 backdrop-blur-xl border-t border-white/10"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-3"><i class="fa-solid fa-stopwatch text-xl" :class="[gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500 timer-pulse' : 'text-emerald-500']"></i><div class="flex flex-col"><span class="text-3xl font-black font-num leading-none transition-colors duration-200" :class="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0 ? 'text-rose-500' : 'text-emerald-500'">{{ activeGameStep ? Math.abs(gameState[activeGameStep.globalIdx]?.timeLeft).toFixed(2) : '0.00' }}<span class="text-xs ml-1 font-black">秒</span></span><span v-if="gameState[activeGameStep?.globalIdx]?.timeLeft <= 0" class="text-[10px] font-black uppercase tracking-widest text-rose-400 mt-1">Overtime 超時中</span></div></div><button v-if="activeGameStep" @click="toggleTimer(activeGameStep)" class="px-5 py-2 rounded-xl font-black text-sm flex items-center gap-2 transition-all active:scale-95" :class="gameState[activeGameStep.globalIdx]?.isRunning ? 'bg-amber-500 text-white' : 'bg-indigo-600 text-white'"><i :class="gameState[activeGameStep.globalIdx]?.isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>{{ gameState[activeGameStep.globalIdx]?.isRunning ? '暫停計時' : (gameState[activeGameStep.globalIdx]?.hasStarted ? '繼續計時' : '開始計時') }}</button></div><button @click="finishGameSuccess(activeGameStep)" :disabled="!activeGameStep || !gameState[activeGameStep.globalIdx]?.hasStarted" class="w-full py-4 rounded-2xl font-black text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2" :class="activeGameStep && gameState[activeGameStep.globalIdx]?.hasStarted ? 'bg-emerald-50 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'"><i class="fa-solid fa-trophy"></i>完成挑戰並考核</button></footer>
+        </template>
+
     </div>
 
 </div>
@@ -598,6 +763,12 @@
             const activeGameStep = ref(null);
             const stepTimers = ref({});
 
+            // BVM 挑戰狀態與歷史紀錄
+            const isBvmModalOpen = ref(false);
+            const activeBvmStep = ref(null);
+            const activeHistoryData = ref(null); 
+            const bvmState = ref({ isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null });
+
             const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
             const studentsList = computed(() => { const s = usersList.value.filter(u => !['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))); return s.length ? s : [{ uid: 'guest', name: '訪客' }]; });
 
@@ -605,19 +776,8 @@
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
             const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
 
-            const fetchData = async () => { 
-                try { 
-                    const uSnap = await getDocs(collection(db, "passport_users")); 
-                    usersList.value = uSnap.docs.map(d => d.data()); 
-                    await fetchQuestions(true); 
-                    fetchCentralGallery(); 
-                } catch(e){} 
-            };
-            const fetchQuestions = async (re = false) => { 
-                const qSnap = await getDocs(collection(db, "passport_questions")); 
-                rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); 
-                if(re) updateEditorCategories(); 
-            };
+            const fetchData = async () => { try { const uSnap = await getDocs(collection(db, "passport_users")); usersList.value = uSnap.docs.map(d => d.data()); await fetchQuestions(true); fetchCentralGallery(); } catch(e){} };
+            const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
             const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
             const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
@@ -637,16 +797,10 @@
                     g[c].items.push({ ...q, status: r?.status || 'Pending', score: r?.score || 0, orderWeight: q.orderWeight ?? 99 });
                     g[c].total++; if(r?.status === 'Pass') g[c].completed++;
                 });
-                return Object.values(g).sort((a,b) => a.orderWeight - b.orderWeight).map((cat, i) => { 
-                    cat.items.sort((a,b) => (a.orderWeight - b.orderWeight) || a.name.localeCompare(b.name)); 
-                    const t = colorThemes[i % colorThemes.length]; 
-                    return { ...cat, activeClass: `${t.bg} text-white ${t.border}`, textColor: t.text }; 
-                });
+                return Object.values(g).sort((a,b) => a.orderWeight - b.orderWeight).map((cat, i) => { cat.items.sort((a,b) => (a.orderWeight - b.orderWeight) || a.name.localeCompare(b.name)); const t = colorThemes[i % colorThemes.length]; return { ...cat, activeClass: `${t.bg} text-white ${t.border}`, textColor: t.text }; });
             });
 
-            const updateEditorCategories = () => {
-                editorCategories.value = JSON.parse(JSON.stringify(displayCategories.value));
-            };
+            const updateEditorCategories = () => { editorCategories.value = JSON.parse(JSON.stringify(displayCategories.value)); };
             const existingCategories = computed(() => displayCategories.value.map(c => c.name));
             const totalProgress = computed(() => { let c = displayCategories.value.reduce((s, a) => s + a.completed, 0), t = displayCategories.value.reduce((s, a) => s + a.total, 0); return t ? Math.round((c/t)*100) : 0; });
 
@@ -657,117 +811,114 @@
                 activeItem.value = item; const secMap = {}; let gIdx = 0;
                 item.steps?.forEach(s => { const t = s.subItem || item.name; if(!secMap[t]) secMap[t] = { title: t, steps: [] }; secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); });
                 itemSections.value = Object.values(secMap); 
-                gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: 0 }));
+                gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: 0, bvmLogs: [] }));
                 const r = studentRecords.value.find(rec => rec.itemName === item.name);
-                if(r?.details) try { 
-                    const p = JSON.parse(r.details); 
-                    p.forEach((d, idx) => { if(gradingState.value[idx]) { gradingState.value[idx].pass = d.pass; gradingState.value[idx].timeUsed = d.timeUsed || 0; } });
-                } catch(e){}
+                if(r?.details) try { const p = JSON.parse(r.details); p.forEach((d, idx) => { if(gradingState.value[idx]) { gradingState.value[idx].pass = d.pass; gradingState.value[idx].timeUsed = d.timeUsed || 0; gradingState.value[idx].bvmLogs = d.bvmLogs || []; } }); } catch(e){}
                 evalRemarks.value = r?.remarks || ''; isMainModalOpen.value = true;
             };
 
             const openSubModal = (s) => activeSubModal.value = s;
-            
-            const setStepStatus = (step, isPass) => {
-                const idx = step.globalIdx;
-                const state = gradingState.value[idx];
-                state.pass = state.pass === isPass ? null : isPass;
-            };
-
+            const setStepStatus = (step, isPass) => { const idx = step.globalIdx; const state = gradingState.value[idx]; state.pass = state.pass === isPass ? null : isPass; };
             const liveScore = computed(() => { const t = gradingState.value.length; if(!t) return 100; const ok = gradingState.value.filter(v => v.pass === true).length; return Math.round((ok/t)*100); });
             const getSectionBarColor = (s) => { const st = s.steps.map(st => gradingState.value[st.globalIdx]?.pass); return st.includes(false) ? 'bg-rose-500' : (st.every(v => v === true) ? 'bg-emerald-500' : 'bg-slate-200'); };
             const isSectionCompleted = (s) => s.steps.every(st => gradingState.value[st.globalIdx]?.pass === true);
             const activeItemHistory = computed(() => activeItem.value ? [...(studentRecords.value.find(r => r.itemName === activeItem.value.name)?.history || [])].reverse() : []);
 
-            // 高精度計時器
+            // 高精度計時器邏輯
             const startStepTimer = (step) => {
-                const idx = step.globalIdx;
-                if(stepTimers.value[idx]) return;
-                gradingState.value[idx].timeUsed = 0;
-                gradingState.value[idx].pass = null;
-                const startTime = Date.now();
-                stepTimers.value[idx] = setInterval(() => {
-                    gradingState.value[idx].timeUsed = (Date.now() - startTime) / 1000;
-                }, 50);
+                const idx = step.globalIdx; if(stepTimers.value[idx]) return;
+                gradingState.value[idx].timeUsed = 0; gradingState.value[idx].pass = null;
+                const startTime = Date.now(); stepTimers.value[idx] = setInterval(() => { gradingState.value[idx].timeUsed = (Date.now() - startTime) / 1000; }, 50);
             };
-
             const stopStepTimer = (step) => {
-                const idx = step.globalIdx;
-                if(!stepTimers.value[idx]) return;
-                clearInterval(stepTimers.value[idx]);
-                delete stepTimers.value[idx];
-                const used = gradingState.value[idx].timeUsed;
-                const limit = step.timerLimit || 999;
-                gradingState.value[idx].pass = used <= limit;
-                showToast(gradingState.value[idx].pass ? "合格" : "超過時限", gradingState.value[idx].pass ? "success" : "warning");
+                const idx = step.globalIdx; if(!stepTimers.value[idx]) return;
+                clearInterval(stepTimers.value[idx]); delete stepTimers.value[idx];
+                const used = gradingState.value[idx].timeUsed; const limit = step.timerLimit || 999;
+                gradingState.value[idx].pass = used <= limit; showToast(gradingState.value[idx].pass ? "合格" : "超過時限", gradingState.value[idx].pass ? "success" : "warning");
             };
+            const resetStepTimer = (step) => { const idx = step.globalIdx; if(stepTimers.value[idx]) { clearInterval(stepTimers.value[idx]); delete stepTimers.value[idx]; } gradingState.value[idx].timeUsed = 0; gradingState.value[idx].pass = null; };
 
-            const resetStepTimer = (step) => {
-                const idx = step.globalIdx;
-                if(stepTimers.value[idx]) { clearInterval(stepTimers.value[idx]); delete stepTimers.value[idx]; }
-                gradingState.value[idx].timeUsed = 0;
-                gradingState.value[idx].pass = null;
+            // BVM 挑戰邏輯
+            const startBvmGame = (step) => { activeBvmStep.value = step; resetBvmState(); isBvmModalOpen.value = true; };
+            const resetBvmState = () => { 
+                if(bvmState.value.timerInterval) clearInterval(bvmState.value.timerInterval);
+                bvmState.value = { isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null }; 
             };
+            const handleBvmSqueeze = () => {
+                const now = Date.now(); const s = bvmState.value;
+                if (!s.isStarted) { 
+                    s.isStarted = true; s.count = 1; s.lastTime = now; s.feedback = '開始吹氣！'; 
+                    // 教官計時器
+                    const startWall = Date.now();
+                    s.timerInterval = setInterval(() => { s.totalElapsed = (Date.now() - startWall) / 1000; }, 100);
+                    return; 
+                }
+                if (s.count >= activeBvmStep.value.bvmGoal) return;
 
+                const interval = (now - s.lastTime) / 1000;
+                s.lastInterval = interval; s.lastTime = now; s.count++;
+                
+                const target = activeBvmStep.value.bvmInterval || 6.0;
+                const tol = activeBvmStep.value.bvmTolerance || 0.2;
+                const isPass = interval >= (target - tol) && interval <= (target + tol);
+                s.lastIntervalIsPass = isPass;
+
+                if (isPass) { s.passCount++; s.feedback = '完美 (Perfect)'; }
+                else if (interval < (target - tol)) s.feedback = '太快 (Too Fast)';
+                else s.feedback = '太慢 (Too Slow)';
+
+                s.results.push(isPass);
+                s.bvmLogs.push({ interval, isPass });
+                if (s.count >= activeBvmStep.value.bvmGoal) {
+                    if(s.timerInterval) clearInterval(s.timerInterval);
+                    showToast("BVM 挑戰結束", "success");
+                }
+            };
+            const submitBvmResult = () => {
+                const gIdx = activeBvmStep.value.globalIdx;
+                const isFinalPass = bvmState.value.passCount === (activeBvmStep.value.bvmGoal - 1);
+                gradingState.value[gIdx].pass = isFinalPass;
+                gradingState.value[gIdx].timeUsed = bvmState.value.passCount; 
+                gradingState.value[gIdx].bvmLogs = bvmState.value.bvmLogs; 
+                stopBvmGame();
+            };
+            const stopBvmGame = () => { 
+                if(bvmState.value.timerInterval) clearInterval(bvmState.value.timerInterval);
+                isBvmModalOpen.value = false; resetBvmState(); 
+            };
+            const showBvmHistory = (data) => { if(data && data.bvmLogs?.length) activeHistoryData.value = data; else showToast("尚無詳細紀錄", "warning"); };
+
+            // 抽卡遊戲邏輯
             const startCardGame = (step) => {
-                const count = step.gamePick || 3;
-                const pools = step.gamePool && step.gamePool.length > 0 ? step.gamePool : ['S+', 'S', 'A', 'B'];
+                const count = step.gamePick || 3; const pools = step.gamePool && step.gamePool.length > 0 ? step.gamePool : ['S+', 'S', 'A', 'B'];
                 const pool = centralGallery.value.filter(img => pools.includes(img.difficulty)).map(i => i.url);
                 if(pool.length < count) { showToast(`指定圖庫圖片不足(庫存:${pool.length}/需:${count})`, "warning"); return; }
                 const drawn = [...pool].sort(() => 0.5 - Math.random()).slice(0, count);
-                
                 activeGameStep.value = step;
-                gameState.value[step.globalIdx] = { 
-                    active: true, drawnCards: drawn, timeLeft: step.gameTimer || 60, interval: null, isRunning: false, hasStarted: false, startTime: 0, initialTime: step.gameTimer || 60
-                };
+                gameState.value[step.globalIdx] = { active: true, drawnCards: drawn, timeLeft: step.gameTimer || 60, interval: null, isRunning: false, hasStarted: false, startTime: 0, initialTime: step.gameTimer || 60 };
                 isGameModalOpen.value = true;
             };
-
             const toggleTimer = (step) => {
-                const gIdx = step.globalIdx;
-                const s = gameState.value[gIdx];
-                if (!s) return;
-
-                if (s.isRunning) {
-                    clearInterval(s.interval);
-                    s.isRunning = false;
-                } else {
-                    s.isRunning = true;
-                    s.hasStarted = true;
-                    const referenceTime = Date.now();
-                    const startingTimeLeft = s.timeLeft;
-                    s.interval = setInterval(() => {
-                        const elapsed = (Date.now() - referenceTime) / 1000;
-                        s.timeLeft = startingTimeLeft - elapsed;
-                    }, 50);
+                const gIdx = step.globalIdx; const s = gameState.value[gIdx]; if (!s) return;
+                if (s.isRunning) { clearInterval(s.interval); s.isRunning = false; }
+                else {
+                    s.isRunning = true; s.hasStarted = true; const referenceTime = Date.now(); const startingTimeLeft = s.timeLeft;
+                    s.interval = setInterval(() => { const elapsed = (Date.now() - referenceTime) / 1000; s.timeLeft = startingTimeLeft - elapsed; }, 50);
                 }
             };
-
             const finishGameSuccess = (step) => {
-                const gIdx = step.globalIdx;
-                const s = gameState.value[gIdx];
+                const gIdx = step.globalIdx; const s = gameState.value[gIdx];
                 if(s && s.hasStarted) {
-                    const timeUsed = s.initialTime - s.timeLeft;
-                    gradingState.value[gIdx].timeUsed = timeUsed;
-                    gradingState.value[gIdx].pass = s.timeLeft >= 0;
-                    showToast(s.timeLeft >= 0 ? "合格" : "超時不合格", s.timeLeft >= 0 ? "success" : "warning");
-                    stopGame(gIdx);
-                } else {
-                    showToast("請先點擊開始計時", "warning");
-                }
+                    const timeUsed = s.initialTime - s.timeLeft; gradingState.value[gIdx].timeUsed = timeUsed; gradingState.value[gIdx].pass = s.timeLeft >= 0;
+                    showToast(s.timeLeft >= 0 ? "合格" : "超時不合格", s.timeLeft >= 0 ? "success" : "warning"); stopGame(gIdx);
+                } else showToast("請先點擊開始計時", "warning");
             };
-
-            const stopGame = (gIdx) => {
-                const s = gameState.value[gIdx];
-                if(s) { clearInterval(s.interval); s.active = false; s.isRunning = false; }
-                isGameModalOpen.value = false;
-            };
+            const stopGame = (gIdx) => { const s = gameState.value[gIdx]; if(s) { clearInterval(s.interval); s.active = false; s.isRunning = false; } isGameModalOpen.value = false; };
 
             const handleSubModalClose = () => { 
                 Object.keys(gameState.value).forEach(idx => stopGame(idx)); 
                 Object.keys(stepTimers.value).forEach(idx => clearInterval(stepTimers.value[idx]));
-                stepTimers.value = {};
-                activeSubModal.value = null; 
+                stepTimers.value = {}; activeSubModal.value = null; stopBvmGame();
             };
 
             const submitGrade = async () => {
@@ -775,14 +926,7 @@
                 const score = liveScore.value, status = score >= 95 ? 'Pass' : 'Fail';
                 const past = studentRecords.value.find(r => r.itemName === activeItem.value.name);
                 let hist = [...(past?.history || [])]; hist.push({ status, score, instructor: currentInstructorName.value, timestamp: new Date().toISOString() });
-                try { 
-                    await setDoc(doc(db, "passport_records", `${selectedStudent.value}_${activeItem.value.name}`), { 
-                        userName: selectedStudent.value, itemName: activeItem.value.name, status, score, 
-                        instructor: currentInstructorName.value, remarks: evalRemarks.value, 
-                        details: JSON.stringify(gradingState.value), history: hist, timestamp: new Date().toISOString() 
-                    }); 
-                    isMainModalOpen.value = false; showToast("儲存成功", "success"); 
-                } catch(e){} finally { isSubmitting.value = false; }
+                try { await setDoc(doc(db, "passport_records", `${selectedStudent.value}_${activeItem.value.name}`), { userName: selectedStudent.value, itemName: activeItem.value.name, status, score, instructor: currentInstructorName.value, remarks: evalRemarks.value, details: JSON.stringify(gradingState.value), history: hist, timestamp: new Date().toISOString() }); isMainModalOpen.value = false; showToast("儲存成功", "success"); } catch(e){} finally { isSubmitting.value = false; }
             };
 
             const openGalleryManager = () => editorMode.value = 'gallery';
@@ -791,21 +935,13 @@
                 showToast(`正在匯入 ${arr.length} 張到 ${targetLv} 級...`, "info");
                 try {
                     await Promise.all(arr.map(async (file) => {
-                        const fileId = Date.now().toString() + Math.random().toString().slice(2,8);
-                        const path = `central_gallery/${fileId}.jpg`;
-                        const sRef = storageRef(storage, path);
-                        await uploadBytes(sRef, file);
-                        const url = await getDownloadURL(sRef);
+                        const fileId = Date.now().toString() + Math.random().toString().slice(2,8); const path = `central_gallery/${fileId}.jpg`;
+                        const sRef = storageRef(storage, path); await uploadBytes(sRef, file); const url = await getDownloadURL(sRef);
                         await setDoc(doc(db, "passport_gallery", fileId), { url, path, difficulty: targetLv, createdAt: new Date().toISOString() });
-                    }));
-                    showToast("匯入完成", "success");
+                    })); showToast("匯入完成", "success");
                 } catch(e){ showToast("匯入失敗", "warning"); }
             };
-            const deleteFromCentralGallery = async (img) => {
-                showAppConfirm('刪除圖片', '確定從圖庫移除此照片？', async () => {
-                    try { await deleteObject(storageRef(storage, img.path)); await deleteDoc(doc(db, "passport_gallery", img.id)); } catch(e){}
-                });
-            };
+            const deleteFromCentralGallery = async (img) => { showAppConfirm('刪除圖片', '確定從圖庫移除此照片？', async () => { try { await deleteObject(storageRef(storage, img.path)); await deleteDoc(doc(db, "passport_gallery", img.id)); } catch(e){} }); };
 
             const openEditorList = () => { updateEditorCategories(); editorMode.value = 'list'; isEditorOpen.value = true; };
             const closeEditor = () => editorMode.value === 'edit' ? showAppConfirm('離開', '捨棄更動？', () => { cleanupUnsaved(); isEditorOpen.value = false; }) : isEditorOpen.value = false;
@@ -820,97 +956,55 @@
                         const p = `step_images/${Date.now()}_${Math.random().toString(36).substr(2,5)}.jpg`;
                         const sRef = storageRef(storage, p); await uploadBytes(sRef, file); const url = await getDownloadURL(sRef);
                         sessionUploadedUrls.value.push(url); return url;
-                    }));
-                    g.steps[sIdx].images = [...(g.steps[sIdx].images || []), ...urls];
-                    showToast("上傳完成", "success");
+                    })); g.steps[sIdx].images = [...(g.steps[sIdx].images || []), ...urls]; showToast("上傳完成", "success");
                 } catch(e){ showToast("失敗", "warning"); }
             };
 
             const removeStepImage = (g, sIdx, imgIdx, url) => { g.steps[sIdx].images.splice(imgIdx, 1); deleteImageFromStorage(url); sessionUploadedUrls.value = sessionUploadedUrls.value.filter(u => u !== url); };
-            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }] }] }; editorMode.value = 'edit'; };
+            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] }] }; editorMode.value = 'edit'; };
             const editItem = (item) => {
                 sessionUploadedUrls.value = []; const grp = []; let cur = null;
-                item.steps?.forEach(s => { 
-                    const n = s.subItem || item.name; 
-                    if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } 
-                    let mode = s.mode || 'none';
-                    if(mode==='none' && s.isGameMode) mode = 'game';
-                    if(mode==='none' && s.isTimerMode) mode = 'timer';
-                    cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30 }); 
+                item.steps?.forEach(s => { const n = s.subItem || item.name; if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } 
+                let mode = s.mode || 'none'; if(mode==='none' && s.isGameMode) mode = 'game'; if(mode==='none' && s.isTimerMode) mode = 'timer';
+                cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2 }); 
                 });
-                editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }] }] };
+                editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] }] };
                 editorMode.value = 'edit';
             };
 
             const checkNewCategory = () => { if(editForm.value.category !== 'NEW_CATEGORY') { const ex = displayCategories.value.find(c => c.name === editForm.value.category); if(ex) editForm.value.icon = ex.icon; } };
-
             const saveItem = async () => {
-                const f = editForm.value; const c = isNewCategory.value ? newCategoryName.value.trim() : f.category;
-                if(!c || !f.name) return showToast("填寫資訊", "warning");
+                const f = editForm.value; const c = isNewCategory.value ? newCategoryName.value.trim() : f.category; if(!c || !f.name) return showToast("填寫資訊", "warning");
                 isEditorSaving.value = true; const nId = `${c}_${f.name}`;
-                const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ 
-                    subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], 
-                    mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, 
-                    gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30 
-                })));
+                const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2 })));
                 try {
-                    const batch = writeBatch(db);
-                    if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
+                    const batch = writeBatch(db); if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
                     let cw = f.catOrderWeight; const ex = displayCategories.value.find(cat => cat.name === c);
                     if(isNewCategory.value) cw = displayCategories.value.length * 10; else if(ex) cw = ex.orderWeight;
                     batch.set(doc(db, "passport_questions", nId), { category: c, name: f.name, icon: f.icon, locked: !!f.locked, equipment: f.equipment, orderWeight: f.orderWeight, catOrderWeight: cw, steps: stps });
-                    rawQuestions.value.filter(q => q.category === c && q.id !== f.originalDocId && q.id !== nId).forEach(q => {
-                        if(q.icon !== f.icon || q.catOrderWeight !== cw) batch.update(doc(db, "passport_questions", q.id), { icon: f.icon, catOrderWeight: cw });
-                    });
+                    rawQuestions.value.filter(q => q.category === c && q.id !== f.originalDocId && q.id !== nId).forEach(q => { if(q.icon !== f.icon || q.catOrderWeight !== cw) batch.update(doc(db, "passport_questions", q.id), { icon: f.icon, catOrderWeight: cw }); });
                     await batch.commit(); sessionUploadedUrls.value = []; showToast("儲存成功", "success"); await fetchQuestions(true); editorMode.value = 'list';
                 } catch(e){ showToast("錯誤", "warning"); } finally { isEditorSaving.value = false; }
             };
 
             const deleteItem = (i) => showAppConfirm('刪除', `確定刪除「${i.name}」？`, async () => { await deleteDoc(doc(db, "passport_questions", i.id)); fetchQuestions(true); });
-            
-            // 修復後的移動排序邏輯 - 重新分配所有權重
             const moveCategoryOrder = async (idx, dir) => {
-                const cs = [...editorCategories.value];
-                const t = idx + dir;
-                if(t < 0 || t >= cs.length) return;
-                [cs[idx], cs[t]] = [cs[t], cs[idx]];
-                
-                const batch = writeBatch(db);
-                cs.forEach((cat, index) => {
-                    const newCatWeight = index * 10;
-                    cat.orderWeight = newCatWeight;
-                    cat.items.forEach(item => {
-                        batch.update(doc(db, "passport_questions", item.id), { catOrderWeight: newCatWeight });
-                    });
-                });
-                editorCategories.value = cs;
-                await batch.commit();
-                fetchQuestions();
+                const cs = [...editorCategories.value]; const t = idx + dir; if(t < 0 || t >= cs.length) return;
+                [cs[idx], cs[t]] = [cs[t], cs[idx]]; const batch = writeBatch(db);
+                cs.forEach((cat, index) => { const newCatWeight = index * 10; cat.orderWeight = newCatWeight; cat.items.forEach(item => { batch.update(doc(db, "passport_questions", item.id), { catOrderWeight: newCatWeight }); }); });
+                editorCategories.value = cs; await batch.commit(); fetchQuestions();
             };
-
             const moveItemOrder = async (ci, ii, dir) => {
-                const cat = editorCategories.value[ci];
-                const items = [...cat.items];
-                const t = ii + dir;
-                if(t < 0 || t >= items.length) return;
-                
-                [items[ii], items[t]] = [items[t], items[ii]];
-                
-                const batch = writeBatch(db);
-                items.forEach((item, index) => {
-                    const newWeight = index * 10;
-                    item.orderWeight = newWeight;
-                    batch.update(doc(db, "passport_questions", item.id), { orderWeight: newWeight });
-                });
-                cat.items = items;
-                await batch.commit();
-                fetchQuestions();
+                const cat = editorCategories.value[ci]; const items = [...cat.items]; const t = ii + dir; if(t < 0 || t >= items.length) return;
+                [items[ii], items[t]] = [items[t], items[ii]]; const batch = writeBatch(db);
+                items.forEach((item, index) => { const newWeight = index * 10; item.orderWeight = newWeight; batch.update(doc(db, "passport_questions", item.id), { orderWeight: newWeight }); });
+                cat.items = items; await batch.commit(); fetchQuestions();
             };
 
-            const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }] });
-            const addStepToGroup = (g) => g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 });
+            const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] });
+            const addStepToGroup = (g) => g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 });
             const removeGroup = (i) => editForm.value.groupedSections.splice(i, 1);
-            const removeStep = (g, i) => { g.steps.splice(i, 1); if(!g.steps.length) g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30 }); };
+            const removeStep = (g, i) => { g.steps.splice(i, 1); if(!g.steps.length) g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }); };
             const moveGroup = (i, d) => { const a = editForm.value.groupedSections, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
@@ -918,7 +1012,9 @@
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep,
                 centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor,
-                stepTimers, startStepTimer, stopStepTimer, resetStepTimer
+                stepTimers, startStepTimer, stopStepTimer, resetStepTimer,
+                isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
+                activeHistoryData, showBvmHistory
             };
         }
     }).mount('#app');
