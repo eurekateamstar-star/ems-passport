@@ -50,6 +50,9 @@
         .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; }
         .full-screen-modal.active { transform: translateY(0); }
 
+        .game-fullscreen-modal { position: fixed; inset: 0; background: #0f172a; z-index: 2000; display: flex; flex-direction: column; max-width: 450px; margin: 0 auto; transform: scale(1.1); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .game-fullscreen-modal.active { transform: scale(1); opacity: 1; pointer-events: auto; }
+
         .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
         @keyframes cardPop { 0% { opacity:0; transform: scale(0.5) translateY(20px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
         .timer-pulse { animation: timerPulse 1s infinite; color: #ef4444; }
@@ -400,64 +403,40 @@
         </div>
     </div>
 
-    <!-- 子步驟彈窗 (整合抽卡遊戲顯示) -->
+    <!-- 子步驟彈窗 -->
     <div class="sub-modal-overlay" :class="{ active: activeSubModal !== null }" @click.self="handleSubModalClose">
         <div class="sub-centered-modal">
             <div class="bg-slate-50 px-5 py-4 border-b flex justify-between items-center"><h3 class="font-black text-slate-800 text-lg">{{ activeSubModal?.title }}</h3></div>
             <div class="sub-modal-body space-y-4 bg-white">
                 <div v-for="(step, stepIdx) in activeSubModal?.steps" :key="'substep-'+step.globalIdx" class="space-y-3 border-b pb-4 last:border-b-0 last:pb-0">
                     <div class="flex items-start gap-3">
-                        <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]">{{ stepIdx + 1 }}</div>
+                        <div v-class="'w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 font-num font-black text-[11px]'">{{ stepIdx + 1 }}</div>
                         <div class="flex-1 pt-0.5">
                             <p class="text-[14px] font-bold text-slate-700 leading-relaxed whitespace-pre-line">{{ step.text }}</p>
                             
-                            <!-- ★ 抽卡遊戲 UI ★ -->
-                            <div v-if="step.isGameMode" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
-                                <div v-if="!gameState[step.globalIdx]?.active" class="text-center py-4">
-                                    <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500">
-                                        <i class="fa-solid fa-layer-group text-2xl"></i>
-                                    </div>
-                                    <button @click="startCardGame(step)" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95">
-                                        <i class="fa-solid fa-shuffle mr-2"></i>開始隨機抽卡挑戰
-                                    </button>
-                                    <div class="flex flex-col gap-1 mt-2">
-                                        <p class="text-[10px] text-indigo-400 font-bold">隨機抽取 {{ step.gamePick || 3 }} 張 / 倒數 {{ step.gameTimer || 60 }} 秒</p>
-                                        <div class="flex justify-center gap-1">
-                                            <span v-for="lv in (step.gamePool || [])" :key="lv" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-700 font-black">{{ lv }} 級</span>
-                                        </div>
-                                    </div>
-                                    <!-- 歷史成績顯示 -->
-                                    <div v-if="gradingState[step.globalIdx]?.timeUsed" class="mt-4 text-center">
-                                        <div class="inline-flex items-center gap-2 text-emerald-600 bg-emerald-100 py-1.5 px-4 rounded-full border border-emerald-200">
-                                            <i class="fa-solid fa-circle-check"></i>
-                                            <span class="text-[11px] font-black tracking-tight">挑戰完成：耗時 <span class="font-num text-[13px]">{{ gradingState[step.globalIdx].timeUsed }}</span> 秒</span>
-                                        </div>
+                            <!-- 抽卡遊戲入口 UI -->
+                            <div v-if="step.isGameMode" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
+                                <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500">
+                                    <i class="fa-solid fa-layer-group text-2xl"></i>
+                                </div>
+                                <button @click="startCardGame(step)" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-sm shadow-lg shadow-indigo-200 active:scale-95">
+                                    <i class="fa-solid fa-shuffle mr-2"></i>開始隨機抽卡挑戰
+                                </button>
+                                <div class="flex flex-col gap-1 mt-2">
+                                    <p class="text-[10px] text-indigo-400 font-bold">隨機抽取 {{ step.gamePick || 3 }} 張 / 倒數 {{ step.gameTimer || 60 }} 秒</p>
+                                    <div class="flex justify-center gap-1">
+                                        <span v-for="lv in (step.gamePool || [])" :key="lv" class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-200 text-indigo-700 font-black">{{ lv }} 級</span>
                                     </div>
                                 </div>
-                                <div v-else class="space-y-4">
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <div v-for="(img, idx) in gameState[step.globalIdx].drawnCards" :key="idx" class="card-pop">
-                                            <img :src="img" class="w-full aspect-square rounded-xl border-2 border-white shadow-md object-cover" />
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-col items-center py-2 border-t border-indigo-200 pt-4">
-                                        <div class="flex items-center gap-2 text-rose-500 mb-4" :class="{ 'timer-pulse': gameState[step.globalIdx].timeLeft < 10 }">
-                                            <i class="fa-solid fa-stopwatch text-xl"></i>
-                                            <span class="text-3xl font-black font-num">{{ gameState[step.globalIdx].timeLeft }}</span>
-                                            <span class="text-sm font-black">秒</span>
-                                        </div>
-                                        
-                                        <!-- ✨ 新增：完成按鈕 ✨ -->
-                                        <button @click="finishGameSuccess(step)" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-black text-[15px] shadow-lg shadow-emerald-200 active:scale-95 mb-3 flex items-center justify-center gap-2">
-                                            <i class="fa-solid fa-trophy"></i> 挑戰成功！(點此完成紀錄)
-                                        </button>
-
-                                        <button @click="stopGame(step.globalIdx)" class="text-[11px] font-black text-indigo-400 underline">重置遊戲</button>
+                                <!-- 歷史耗時顯示 -->
+                                <div v-if="gradingState[step.globalIdx]?.timeUsed" class="mt-4">
+                                    <div class="inline-flex items-center gap-2 text-emerald-600 bg-emerald-50 py-1.5 px-4 rounded-full border border-emerald-200">
+                                        <i class="fa-solid fa-bolt"></i>
+                                        <span class="text-[11px] font-black">挑戰完成：耗時 {{ gradingState[step.globalIdx].timeUsed }} 秒</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 普通圖片 -->
                             <template v-else>
                                 <div v-if="step.images?.length" class="mt-2 space-y-2">
                                     <img v-for="(imgUrl, ii) in step.images" :key="ii" :src="imgUrl" class="w-full rounded-xl border object-cover shadow-sm max-h-48" />
@@ -474,6 +453,47 @@
             </div>
             <div class="p-4 border-t bg-white shrink-0"><button @click="handleSubModalClose" class="w-full bg-slate-800 text-white py-3.5 rounded-[12px] font-black active:scale-95 transition-transform shadow-md">完成並返回</button></div>
         </div>
+    </div>
+
+    <!-- ⭐ 全螢幕遊戲挑戰室 ⭐ -->
+    <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen }">
+        <header class="p-6 pb-4 flex justify-between items-start text-white">
+            <div>
+                <p class="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Challenge in progress</p>
+                <h2 class="text-xl font-black">{{ activeGameStep?.text }}</h2>
+                <p class="text-[10px] text-slate-400 mt-1">請找出下方顯示的 {{ activeGameStep?.gamePick }} 樣器材</p>
+            </div>
+            <button @click="stopGame(activeGameStep?.globalIdx)" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white"><i class="fa-solid fa-xmark"></i></button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto px-6 py-4 flex flex-col items-center justify-center gap-6">
+            <div v-if="activeGameStep && gameState[activeGameStep.globalIdx]" class="grid grid-cols-1 gap-6 w-full">
+                <div v-for="(img, idx) in gameState[activeGameStep.globalIdx].drawnCards" :key="idx" class="card-pop w-full">
+                    <div class="relative aspect-video w-full rounded-3xl overflow-hidden border-4 border-white/10 shadow-2xl">
+                        <img :src="img" class="w-full h-full object-cover" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="p-6 bg-slate-900/80 backdrop-blur-xl border-t border-white/10">
+            <div class="flex items-center justify-between mb-6 px-2">
+                <div class="flex items-center gap-3 text-rose-500" :class="{ 'timer-pulse': activeGameStep && gameState[activeGameStep.globalIdx]?.timeLeft < 10 }">
+                    <i class="fa-solid fa-stopwatch text-2xl"></i>
+                    <span class="text-4xl font-black font-num">{{ activeGameStep ? gameState[activeGameStep.globalIdx]?.timeLeft : 0 }}</span>
+                    <span class="text-sm font-black">秒</span>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] font-black text-slate-500 uppercase">Target Count</p>
+                    <p class="text-lg font-black text-white font-num">{{ activeGameStep?.gamePick }} Items</p>
+                </div>
+            </div>
+            
+            <button @click="finishGameSuccess(activeGameStep)" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-5 rounded-2xl font-black text-lg shadow-2xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
+                <i class="fa-solid fa-trophy text-xl"></i> 挑戰成功！點此完成紀錄
+            </button>
+            <p class="text-center text-slate-500 text-[10px] mt-4 font-bold tracking-widest">挑戰成功後將自動標記為標準正確並紀錄耗時</p>
+        </footer>
     </div>
 
 </div>
@@ -511,6 +531,8 @@
             const centralGallery = ref([]); 
             const currentUploadDifficulty = ref('S');
             const gameState = ref({}); 
+            const isGameModalOpen = ref(false);
+            const activeGameStep = ref(null);
 
             const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
             const studentsList = computed(() => { const s = usersList.value.filter(u => !['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))); return s.length ? s : [{ uid: 'guest', name: '訪客' }]; });
@@ -528,19 +550,8 @@
                 } catch(e){} 
             };
             const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
-            
-            const fetchCentralGallery = () => {
-                onSnapshot(collection(db, "passport_gallery"), (snap) => {
-                    centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                }, (err) => {
-                    console.error("Gallery Sync Error:", err);
-                });
-            };
-
-            const getDifficultyColor = (lv) => {
-                const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' };
-                return map[lv] || 'text-slate-400';
-            };
+            const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+            const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
             onMounted(() => fetchData());
@@ -573,7 +584,6 @@
                 item.steps?.forEach(s => { const t = s.subItem || item.name; if(!secMap[t]) secMap[t] = { title: t, steps: [] }; secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); });
                 itemSections.value = Object.values(secMap); 
                 gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: null }));
-                gameState.value = {};
                 const r = studentRecords.value.find(rec => rec.itemName === item.name);
                 if(r?.details) try { 
                     const p = JSON.parse(r.details); 
@@ -587,16 +597,6 @@
             const setStepStatus = (step, isPass) => {
                 const idx = step.globalIdx;
                 const state = gradingState.value[idx];
-                const game = gameState.value[idx];
-                
-                // 如果在遊戲進行中直接手動按按鈕
-                if(game && game.active) {
-                    if(isPass) {
-                        state.timeUsed = step.gameTimer - game.timeLeft;
-                    }
-                    stopGame(idx);
-                }
-
                 state.pass = state.pass === isPass ? null : isPass;
                 if(state.pass === null) state.timeUsed = null;
             };
@@ -606,16 +606,18 @@
             const isSectionCompleted = (s) => s.steps.every(st => gradingState.value[st.globalIdx]?.pass === true);
             const activeItemHistory = computed(() => activeItem.value ? [...(studentRecords.value.find(r => r.itemName === activeItem.value.name)?.history || [])].reverse() : []);
 
-            // ★ 抽卡遊戲邏輯 ★
+            // 🎮 抽卡遊戲邏輯 🎮
             const startCardGame = (step) => {
                 const count = step.gamePick || 3;
                 const pools = step.gamePool && step.gamePool.length > 0 ? step.gamePool : ['S+', 'S', 'A', 'B'];
                 const pool = centralGallery.value.filter(img => pools.includes(img.difficulty)).map(i => i.url);
-                
                 if(pool.length < count) { showToast(`指定圖庫圖片不足(庫存:${pool.length}/需:${count})`, "warning"); return; }
                 const drawn = [...pool].sort(() => 0.5 - Math.random()).slice(0, count);
                 
+                activeGameStep.value = step;
                 gameState.value[step.globalIdx] = { active: true, drawnCards: drawn, timeLeft: step.gameTimer || 60, interval: null };
+                isGameModalOpen.value = true;
+
                 gameState.value[step.globalIdx].interval = setInterval(() => {
                     const s = gameState.value[step.globalIdx];
                     if(!s || !s.active) { clearInterval(s?.interval); return; }
@@ -624,7 +626,8 @@
                         clearInterval(s.interval);
                         s.active = false;
                         setStepStatus(step, false); 
-                        showToast("時間到！自動判定未通過", "warning");
+                        isGameModalOpen.value = false;
+                        showToast("時間到！判定未通過", "warning");
                     }
                 }, 1000);
             };
@@ -637,19 +640,17 @@
                     gradingState.value[gIdx].timeUsed = timeUsed;
                     gradingState.value[gIdx].pass = true;
                     stopGame(gIdx);
-                    showToast(`完成挑戰！耗時 ${timeUsed} 秒`, "success");
+                    showToast(`完成！耗時 ${timeUsed} 秒`, "success");
                 }
             };
 
             const stopGame = (gIdx) => {
                 const s = gameState.value[gIdx];
                 if(s) { clearInterval(s.interval); s.active = false; }
+                isGameModalOpen.value = false;
             };
 
-            const handleSubModalClose = () => {
-                Object.keys(gameState.value).forEach(idx => stopGame(idx));
-                activeSubModal.value = null;
-            };
+            const handleSubModalClose = () => { Object.keys(gameState.value).forEach(idx => stopGame(idx)); activeSubModal.value = null; };
 
             const submitGrade = async () => {
                 if(!activeItem.value || isSubmitting.value) return; isSubmitting.value = true;
@@ -668,40 +669,23 @@
 
             const openGalleryManager = () => editorMode.value = 'gallery';
             const uploadToCentralGallery = async (files) => {
-                if(!files?.length) return; 
-                const arr = Array.from(files); 
-                const targetLv = currentUploadDifficulty.value;
+                if(!files?.length) return; const arr = Array.from(files); const targetLv = currentUploadDifficulty.value;
                 showToast(`正在匯入 ${arr.length} 張到 ${targetLv} 級...`, "info");
-                
                 try {
                     await Promise.all(arr.map(async (file) => {
                         const fileId = Date.now().toString() + Math.random().toString().slice(2,8);
                         const path = `central_gallery/${fileId}.jpg`;
                         const sRef = storageRef(storage, path);
-                        
                         await uploadBytes(sRef, file);
                         const url = await getDownloadURL(sRef);
-                        
-                        await setDoc(doc(db, "passport_gallery", fileId), { 
-                            url, 
-                            path, 
-                            difficulty: targetLv,
-                            createdAt: new Date().toISOString()
-                        });
+                        await setDoc(doc(db, "passport_gallery", fileId), { url, path, difficulty: targetLv, createdAt: new Date().toISOString() });
                     }));
                     showToast("匯入完成", "success");
-                } catch(e){ 
-                    console.error("Gallery Upload Failure:", e);
-                    showToast("匯入失敗，請檢查 Firebase 權限規則", "warning"); 
-                }
+                } catch(e){ showToast("匯入失敗", "warning"); }
             };
-            
             const deleteFromCentralGallery = async (img) => {
                 showAppConfirm('刪除圖片', '確定從圖庫移除此照片？', async () => {
-                    try {
-                        await deleteObject(storageRef(storage, img.path));
-                        await deleteDoc(doc(db, "passport_gallery", img.id));
-                    } catch(e){}
+                    try { await deleteObject(storageRef(storage, img.path)); await deleteDoc(doc(db, "passport_gallery", img.id)); } catch(e){}
                 });
             };
 
@@ -725,8 +709,6 @@
             };
 
             const removeStepImage = (g, sIdx, imgIdx, url) => { g.steps[sIdx].images.splice(imgIdx, 1); deleteImageFromStorage(url); sessionUploadedUrls.value = sessionUploadedUrls.value.filter(u => u !== url); };
-            const moveStepImage = (g, sIdx, idx, dir) => { const i = g.steps[sIdx].images; const t = idx + dir; if(t>=0 && t<i.length) [i[idx], i[t]] = [i[t], i[idx]]; };
-
             const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], isGameMode: false, gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'] }] }] }; editorMode.value = 'edit'; };
             const editItem = (item) => {
                 sessionUploadedUrls.value = []; const grp = []; let cur = null;
@@ -779,8 +761,8 @@
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
             return {
-                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, moveStepImage, cancelEdit,
-                gameState, startCardGame, stopGame, finishGameSuccess, handleSubModalClose,
+                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
+                gameState, startCardGame, stopGame, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep,
                 centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor
             };
         }
