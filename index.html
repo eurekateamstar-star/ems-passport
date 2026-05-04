@@ -58,7 +58,7 @@
         .timer-pulse { animation: timerPulse 1s infinite; color: #ef4444; }
         @keyframes timerPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
 
-        /* --- BVM 寫實視覺與接合優化 --- */
+        /* --- BVM 上視圖視覺修正與層級優化 --- */
         .bvm-container {
             display: flex;
             align-items: center;
@@ -67,45 +67,134 @@
             height: 200px;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            overflow: visible;
         }
 
-        /* 1. 前端歧管與面罩組 (緊貼球體) */
+        /* 1. 前端組件組 (移除整體 z-index，讓內部組件獨立排序) */
         .bvm-front-group { 
+            flex: 1; 
             display: flex; 
             align-items: center; 
+            justify-content: flex-end; 
             z-index: 40; 
-            margin-right: -10px; /* 讓歧管插進球體 */
+            margin-right: -2px; 
+            position: relative;
+        }
+
+        /* 面罩集合體 (負責定位) */
+        .bvm-mask-assembly {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* 移除此處的 z-index，讓子元素與透明管直接競爭層級 */
+        }
+
+        /* 透明面罩本體 (最底層) */
+        .bvm-mask-main {
+            width: 50px; 
+            height: 75px;
+            background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3), rgba(255,255,255,0.05));
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1), inset 0 0 15px rgba(255,255,255,0.2);
+            position: relative;
+            z-index: 1; /* ★ 1. 最底層 */
+        }
+
+        /* 連接透明圓環與閥門的透明管子 (中間層) */
+        .bvm-clear-tube {
+            position: relative;
+            width: 50px; /* 稍微加長，確保插進圓環下方 */
+            height: 16px; 
+            background: rgba(230, 245, 255, 0.4); 
+            border-top: 2px solid rgba(255, 255, 255, 0.85); 
+            border-bottom: 2px solid rgba(255, 255, 255, 0.5); 
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6);
+            margin-left: -32px; /* ★ 往左拉，覆蓋到面罩中心點下方 */
+            margin-right: -4px; 
+            z-index: 10; /* ★ 2. 中間層：壓在面罩上面 */
+            border-radius: 0; 
+        }
+
+        /* 面罩正中央的藍色扁平環 (頂層) */
+        .bvm-mask-blue-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            border: 5px solid #2563eb; 
+            border-radius: 50%;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.3), inset 0 2px 4px rgba(0,0,0,0.4); 
+            z-index: 20; /* ★ 3. 頂層：壓在透明管上面 */
+        }
+
+        /* 疊在藍環上方的透明正圓形接頭 (最頂層) */
+        .bvm-clear-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 22px;
+            height: 22px;
+            background: rgba(230, 245, 255, 0.35); 
+            border: 2px solid rgba(255, 255, 255, 0.85); 
+            border-radius: 50%;
+            box-shadow: inset 3px 3px 4px rgba(255, 255, 255, 0.8), inset 0 -2px 3px rgba(255, 255, 255, 0.4);
+            z-index: 21; /* ★ 4. 最頂層：確保最清晰 */
+        }
+
+        /* 透明管正上方的小調節閥 */
+        .bvm-popoff-valve {
+            position: absolute;
+            top: -5px;
+            left: 60%;
+            transform: translateX(-50%); 
+            width: 18px; 
+            height: 18px;
+            background: radial-gradient(circle at 35% 35%, #60a5fa, #1e40af);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 50%; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 1px 1px 3px rgba(255,255,255,0.6);
+            z-index: 25;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        /* 透明面罩 */
-        .bvm-mask-main {
-            width: 70px; height: 95px;
-            background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.25), rgba(255,255,255,0.05));
-            border: 1.5px solid rgba(255,255,255,0.3);
-            border-radius: 50% 50% 50% 50% / 40% 40% 70% 70%;
-            backdrop-filter: blur(2px);
-            box-shadow: inset 0 0 12px rgba(255,255,255,0.2);
-            transform: rotate(-10deg);
+        .bvm-popoff-valve::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #0ea5e9;
+            border-radius: 50%;
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.8), 0 1px 2px rgba(0,0,0,0.5);
         }
 
         /* L 型閥門歧管 */
         .bvm-valve-assembly {
-            display: flex; flex-direction: column; align-items: center; position: relative; margin-left: -5px;
+            display: flex; flex-direction: column; align-items: center; position: relative; 
+            transform: translateY(-4px); 
+            z-index: 30; /* 銜接球體的歧管 */
         }
         .bvm-top-port {
-            width: 24px; height: 16px; background: #2563eb; 
-            border-radius: 50% 50% 2px 2px; border: 1px solid rgba(255,255,255,0.3);
-            margin-bottom: -1px; z-index: 2;
+            width: 16px; height: 10px; background: #1d4ed8; 
+            border-radius: 50% 50% 0 0; 
+            margin-bottom: 0px; z-index: 2;
         }
         .bvm-valve-stem {
-            width: 40px; height: 40px;
-            background: linear-gradient(to right, #3b82f6, #1d4ed8);
-            border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
+            width: 28px; height: 28px;
+            background: linear-gradient(to right, #2563eb, #1e40af);
+            border-radius: 4px;
+            box-shadow: inset 2px 0 4px rgba(0,0,0,0.3); 
         }
 
         /* 2. 中間藍色球體 */
         .bvm-main-ball { 
-            width: 170px; height: 110px; 
+            width: 120px; height: 90px; 
             background: radial-gradient(circle at 35% 30%, rgba(147, 197, 253, 0.85), rgba(30, 64, 175, 0.8)); 
             border: 2.5px solid rgba(255, 255, 255, 0.4);
             border-radius: 50%; 
@@ -115,36 +204,38 @@
             z-index: 30; 
             transition: transform 0.08s cubic-bezier(0.2, 0, 0, 1); 
             flex-shrink: 0;
-            transform: translateZ(0); /* 強制硬體加速，防止手機 3D 陰影扁平化 */
+            transform: translateZ(0); 
             will-change: transform;
         }
 
-        /* 3. 後端屁股接頭與儲氣袋組 (緊貼球體) */
+        /* 3. 後端：屁股接頭與儲氣袋 */
         .bvm-rear-group { 
+            flex: 1; 
             display: flex; 
             align-items: center; 
+            justify-content: flex-start; 
             z-index: 10; 
-            margin-left: -8px; /* 讓屁股接頭插進球體 */
+            margin-left: -6px; 
         }
-        
-        /* 屁股接頭 */
         .bvm-butt-socket {
-            width: 32px; height: 38px;
-            background: #cbd5e1; border-radius: 4px; border: 1px solid #94a3b8;
+            width: 20px; height: 26px;
+            background: #cbd5e1; border-radius: 4px;
             flex-shrink: 0;
             z-index: 20;
-            box-shadow: inset 2px 0 5px rgba(0,0,0,0.1);
+            box-shadow: inset 2px 0 5px rgba(0,0,0,0.2);
         }
-        
-        /* 儲氣袋 Reservoir Bag */
+        .bvm-reservoir-neck {
+            width: 18px; height: 24px;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.45) 0%, rgba(200,225,255,0.1) 100%);
+            margin-left: -4px; margin-right: -2px; z-index: 15;
+        }
         .bvm-reservoir-bag {
-            width: 160px; height: 80px;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, rgba(200,225,255,0.1) 100%);
-            border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 8px 100px 100px 8px;
-            margin-left: -5px; /* 連接到屁股接頭 */
-            backdrop-filter: blur(1.5px);
-            box-shadow: inset 0 0 20px rgba(255,255,255,0.1);
+            width: 120px; height: 80px; 
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.45) 0%, rgba(200,225,255,0.1) 100%);
+            border: 1.5px solid rgba(255,255,255,0.4);
+            border-left: none; 
+            border-radius: 40px 50% 50% 40%; 
+            backdrop-filter: blur(1px);
             z-index: 10;
         }
 
@@ -667,9 +758,8 @@
                     </div>
                 </div>
 
-                <!-- BVM 寫實視覺構造 (歧管與屁股接頭已接好) -->
+                <!-- BVM 寫實視覺構造 -->
                 <div class="relative flex items-center justify-center my-6">
-                    <!-- 反饋文字 -->
                     <div v-if="bvmState.feedback" class="absolute -top-16 font-black text-2xl uppercase tracking-widest animate-bounce text-center whitespace-nowrap z-[100]" 
                          :class="bvmState.feedback.includes('完美') ? 'text-emerald-500' : (bvmState.feedback.includes('太快') ? 'text-rose-500' : 'text-amber-500')">
                         {{ bvmState.feedback }}
@@ -684,21 +774,33 @@
                          @touchend="bvmState.isSqueezing = false"
                          @touchcancel="bvmState.isSqueezing = false"
                          @click="handleBvmSqueeze">
-                        <!-- 前端：面罩 + L 閥歧管 -->
+                        <!-- 前端組件：層級修正重點區 -->
                         <div class="bvm-front-group">
-                            <div class="bvm-mask-main"></div>
+                            <div class="bvm-mask-assembly">
+                                <!-- 面罩主體 (最下層) -->
+                                <div class="bvm-mask-main"></div>
+                                <!-- 藍環 (壓在透明管之上) -->
+                                <div class="bvm-mask-blue-ring"></div>
+                                <!-- 透明接頭 (最頂層) -->
+                                <div class="bvm-clear-ring"></div>
+                            </div>
+                            <!-- 透明管 (壓在面罩上，但被藍環與圓環壓住) -->
+                            <div class="bvm-clear-tube">
+                                <div class="bvm-popoff-valve"></div>
+                            </div>
                             <div class="bvm-valve-assembly">
                                 <div class="bvm-top-port"></div> 
                                 <div class="bvm-valve-stem"></div>
                             </div>
                         </div>
 
-                        <!-- 中間：呼吸球體 (縮放主體) -->
+                        <!-- 中間：呼吸球體 -->
                         <div class="bvm-main-ball"></div>
 
-                        <!-- 後端：屁股接頭 + 儲氣袋 -->
+                        <!-- 後端：接頭與儲氣袋 -->
                         <div class="bvm-rear-group">
                             <div class="bvm-butt-socket"></div> 
+                            <div class="bvm-reservoir-neck"></div>
                             <div class="bvm-reservoir-bag"></div> 
                         </div>
                     </div>
@@ -773,7 +875,6 @@
             const activeGameStep = ref(null);
             const stepTimers = ref({});
 
-            // BVM 挑戰狀態與歷史紀錄
             const isBvmModalOpen = ref(false);
             const activeBvmStep = ref(null);
             const activeHistoryData = ref(null); 
@@ -834,7 +935,6 @@
             const isSectionCompleted = (s) => s.steps.every(st => gradingState.value[st.globalIdx]?.pass === true);
             const activeItemHistory = computed(() => activeItem.value ? [...(studentRecords.value.find(r => r.itemName === activeItem.value.name)?.history || [])].reverse() : []);
 
-            // 高精度計時器邏輯
             const startStepTimer = (step) => {
                 const idx = step.globalIdx; if(stepTimers.value[idx]) return;
                 gradingState.value[idx].timeUsed = 0; gradingState.value[idx].pass = null;
@@ -848,7 +948,6 @@
             };
             const resetStepTimer = (step) => { const idx = step.globalIdx; if(stepTimers.value[idx]) { clearInterval(stepTimers.value[idx]); delete stepTimers.value[idx]; } gradingState.value[idx].timeUsed = 0; gradingState.value[idx].pass = null; };
 
-            // BVM 挑戰邏輯
             const startBvmGame = (step) => { activeBvmStep.value = step; resetBvmState(); isBvmModalOpen.value = true; };
             const resetBvmState = () => { 
                 if(bvmState.value.timerInterval) clearInterval(bvmState.value.timerInterval);
@@ -858,25 +957,20 @@
                 const now = Date.now(); const s = bvmState.value;
                 if (!s.isStarted) { 
                     s.isStarted = true; s.count = 1; s.lastTime = now; s.feedback = '開始吹氣！'; 
-                    // 教官計時器
                     const startWall = Date.now();
                     s.timerInterval = setInterval(() => { s.totalElapsed = (Date.now() - startWall) / 1000; }, 100);
                     return; 
                 }
                 if (s.count >= activeBvmStep.value.bvmGoal) return;
-
                 const interval = (now - s.lastTime) / 1000;
                 s.lastInterval = interval; s.lastTime = now; s.count++;
-                
                 const target = activeBvmStep.value.bvmInterval || 6.0;
                 const tol = activeBvmStep.value.bvmTolerance || 0.2;
                 const isPass = interval >= (target - tol) && interval <= (target + tol);
                 s.lastIntervalIsPass = isPass;
-
                 if (isPass) { s.passCount++; s.feedback = '完美 (Perfect)'; }
                 else if (interval < (target - tol)) s.feedback = '太快 (Too Fast)';
                 else s.feedback = '太慢 (Too Slow)';
-
                 s.results.push(isPass);
                 s.bvmLogs.push({ interval, isPass });
                 if (s.count >= activeBvmStep.value.bvmGoal) {
@@ -898,7 +992,6 @@
             };
             const showBvmHistory = (data) => { if(data && data.bvmLogs?.length) activeHistoryData.value = data; else showToast("尚無詳細紀錄", "warning"); };
 
-            // 抽卡遊戲邏輯
             const startCardGame = (step) => {
                 const count = step.gamePick || 3; const pools = step.gamePool && step.gamePool.length > 0 ? step.gamePool : ['S+', 'S', 'A', 'B'];
                 const pool = centralGallery.value.filter(img => pools.includes(img.difficulty)).map(i => i.url);
