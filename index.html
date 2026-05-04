@@ -115,6 +115,8 @@
             z-index: 30; 
             transition: transform 0.08s cubic-bezier(0.2, 0, 0, 1); 
             flex-shrink: 0;
+            transform: translateZ(0); /* 強制硬體加速，防止手機 3D 陰影扁平化 */
+            will-change: transform;
         }
 
         /* 3. 後端屁股接頭與儲氣袋組 (緊貼球體) */
@@ -147,8 +149,9 @@
         }
 
         /* 點擊壓扁效果 */
-        .bvm-container:active .bvm-main-ball { 
-            transform: scaleY(0.6) scaleX(1.08); 
+        .bvm-container:active .bvm-main-ball,
+        .bvm-container.is-squeezing .bvm-main-ball { 
+            transform: scaleY(0.6) scaleX(1.08) translateZ(0); 
         }
         
         ::-webkit-scrollbar { width: 0px; background: transparent; }
@@ -672,7 +675,15 @@
                         {{ bvmState.feedback }}
                     </div>
                     
-                    <div class="bvm-container" @click="handleBvmSqueeze">
+                    <div class="bvm-container" 
+                         :class="{ 'is-squeezing': bvmState.isSqueezing }"
+                         @mousedown="bvmState.isSqueezing = true" 
+                         @mouseup="bvmState.isSqueezing = false" 
+                         @mouseleave="bvmState.isSqueezing = false"
+                         @touchstart="bvmState.isSqueezing = true" 
+                         @touchend="bvmState.isSqueezing = false"
+                         @touchcancel="bvmState.isSqueezing = false"
+                         @click="handleBvmSqueeze">
                         <!-- 前端：面罩 + L 閥歧管 -->
                         <div class="bvm-front-group">
                             <div class="bvm-mask-main"></div>
@@ -766,7 +777,7 @@
             const isBvmModalOpen = ref(false);
             const activeBvmStep = ref(null);
             const activeHistoryData = ref(null); 
-            const bvmState = ref({ isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null });
+            const bvmState = ref({ isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null, isSqueezing: false });
 
             const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
             const studentsList = computed(() => { const s = usersList.value.filter(u => !['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))); return s.length ? s : [{ uid: 'guest', name: '訪客' }]; });
@@ -841,7 +852,7 @@
             const startBvmGame = (step) => { activeBvmStep.value = step; resetBvmState(); isBvmModalOpen.value = true; };
             const resetBvmState = () => { 
                 if(bvmState.value.timerInterval) clearInterval(bvmState.value.timerInterval);
-                bvmState.value = { isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null }; 
+                bvmState.value = { isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null, isSqueezing: false }; 
             };
             const handleBvmSqueeze = () => {
                 const now = Date.now(); const s = bvmState.value;
