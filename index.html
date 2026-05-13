@@ -397,7 +397,7 @@
         <button v-else @click="handleLogout" class="w-14 h-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-emerald-500"><i class="fa-solid fa-unlock-keyhole text-xl"></i></button>
     </div>
 
-    <!-- 題庫編輯中心 -->
+<!-- 題庫編輯中心 -->
     <div class="full-screen-modal" :class="{ active: isEditorOpen }">
         <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-3 px-5 flex justify-between items-center bg-slate-800 text-white shrink-0 shadow-md z-10">
             <div>
@@ -411,6 +411,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <button @click="createNewItem" class="py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> 新增考核</button>
                 <button @click="openGalleryManager" class="py-4 rounded-2xl bg-emerald-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-images"></i> 抽卡圖庫</button>
+                <button @click="openGeofenceSettings" class="col-span-2 py-4 rounded-2xl bg-rose-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-location-dot"></i> 電子圍籬</button>
             </div>
             
             <div v-for="(cat, catIdx) in editorCategories" :key="'edit-cat-'+cat.id" class="space-y-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
@@ -591,7 +592,65 @@
                 <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm">完成並返回</button>
             </div>
         </div>
+
+        <div v-if="editorMode === 'geofence'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
+            <div class="p-4 bg-white border-b space-y-3">
+                <h3 class="font-black text-slate-800"><i class="fa-solid fa-location-dot text-rose-500 mr-2"></i>電子圍籬設定</h3>
+                <p class="text-xs text-slate-400 font-bold">設定允許申請教官模式的地理範圍（半徑 50 公尺）</p>
+                
+                <div class="bg-slate-50 p-3 rounded-xl border space-y-3">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-black text-slate-500">中心緯度 Latitude</label>
+                        <input v-model.number="geofenceForm.lat" type="number" step="0.000001" 
+                               class="w-full bg-white border rounded-lg px-3 py-2 text-sm font-num outline-none" 
+                               placeholder="例：25.038357">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-black text-slate-500">中心經度 Longitude</label>
+                        <input v-model.number="geofenceForm.lng" type="number" step="0.000001" 
+                               class="w-full bg-white border rounded-lg px-3 py-2 text-sm font-num outline-none"
+                               placeholder="例：121.564885">
+                    </div>
+                    <button @click="useCurrentLocation" 
+                            class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-black text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-crosshairs"></i> 使用目前所在位置
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 p-3 rounded-xl border bg-white">
+                    <i class="fa-solid fa-circle-info text-slate-400"></i>
+                    <div>
+                        <p class="text-xs font-black text-slate-600">固定半徑：50 公尺</p>
+                        <p class="text-[10px] text-slate-400">教官需在此範圍內才可申請登入</p>
+                    </div>
+                </div>
+
+                <div v-if="geofenceForm.lat && geofenceForm.lng" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                    <i class="fa-solid fa-circle-check mr-1"></i>
+                    目前設定：{{ geofenceForm.lat.toFixed(6) }}, {{ geofenceForm.lng.toFixed(6) }}
+                </div>
+                <div v-else class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    尚未設定圍籬，目前所有人皆可申請
+                </div>
+            </div>
+
+            <div class="p-4 flex flex-col gap-3">
+                <button @click="saveGeofence" class="w-full py-4 bg-rose-600 text-white rounded-2xl font-black text-base shadow-lg active:scale-95">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i>儲存圍籬設定
+                </button>
+                <button @click="clearGeofence" class="w-full py-3 bg-slate-200 text-slate-600 rounded-2xl font-black text-sm active:scale-95">
+                    <i class="fa-solid fa-trash mr-2"></i>清除圍籬（全員開放）
+                </button>
+                <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm">
+                    完成並返回
+                </button>
+            </div>
+        </div>
+
     </div>
+
+
 
     <!-- 審核制教官登入 -->
     <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="loginStatus === 'idle' ? isLoginModalOpen = false : null">
@@ -617,10 +676,18 @@
                         <input v-model="loginForm.password" type="password" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none">
                         <button @click="handleAdminLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base mt-4">管理員登入</button>
                     </div>
-                    
-                    <button v-else @click="requestLogin" :disabled="!loginForm.name" class="w-full py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base mt-4 disabled:opacity-50 flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-paper-plane"></i> 向管理者申請權限
-                    </button>
+                   <button v-else @click="requestLogin" 
+        :disabled="!loginForm.name || !isInGeofence" 
+        class="w-full py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base mt-4 disabled:opacity-50 flex justify-center items-center gap-2"
+        :class="!isInGeofence ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600'">
+    <i class="fa-solid fa-paper-plane"></i> 向管理者申請權限
+</button>
+<p v-if="!isInGeofence" class="text-center text-xs font-black text-rose-500 mt-2">
+    <i class="fa-solid fa-location-xmark mr-1"></i>不在允許範圍內，無法申請
+</p>
+<p v-else-if="geofenceConfig" class="text-center text-xs font-black text-emerald-500 mt-2">
+    <i class="fa-solid fa-location-dot mr-1"></i>位置驗證通過
+</p>
                 </template>
 
                 <!-- 等待審核畫面 -->
@@ -635,8 +702,9 @@
     </div>
 
     <!-- 管理員專屬：審核浮動面板 (只有登入為管理員才看得到) -->
-     <div v-if="isCurrentlyAdmin && pendingRequests.length > 0" 
-     class="fixed top-20 left-1/2 -translate-x-1/2 z-[99999] w-full max-w-[400px] px-4 animate-bounce">
+     <!-- 改用 inset-x-0 讓它靠兩側對齊，不用 translate -->
+<div v-if="isCurrentlyAdmin && pendingRequests.length > 0" 
+     class="fixed top-4 inset-x-0 z-[99999] w-full max-w-[400px] mx-auto px-4 animate-bounce">
         <div class="bg-indigo-600 rounded-2xl shadow-2xl border-2 border-indigo-400 overflow-hidden text-white">
             <div class="bg-indigo-800 px-4 py-2 flex justify-between items-center text-xs font-black">
                 <span><i class="fa-solid fa-bell text-amber-300 mr-1"></i> 權限申請通知</span>
@@ -940,7 +1008,79 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
             const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
-            onMounted(() => fetchData());
+            onMounted(() => { 
+    fetchData(); 
+    fetchGeofence();   // ← 加這行
+    checkGeofence();   // ← 加這行
+});
+// 圍籬相關
+const geofenceForm = ref({ lat: null, lng: null });
+const geofenceConfig = ref(null); // 從 Firebase 讀取的圍籬設定
+const userLocation = ref(null);   // 使用者目前位置
+const isInGeofence = ref(true);   // 預設開放（未設定時）
+
+// 讀取圍籬設定（onMounted 時呼叫）
+const fetchGeofence = async () => {
+    try {
+        const snap = await getDocs(collection(db, "passport_config"));
+        const cfg = snap.docs.find(d => d.id === 'geofence');
+        if (cfg) {
+            geofenceConfig.value = cfg.data();
+            geofenceForm.value = { lat: cfg.data().lat, lng: cfg.data().lng };
+        }
+    } catch(e) {}
+};
+
+// 計算兩點距離（公尺）
+const calcDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+// 取得使用者位置並判斷是否在圍籬內
+const checkGeofence = () => {
+    if (!geofenceConfig.value?.lat) { isInGeofence.value = true; return; }
+    if (!navigator.geolocation) { isInGeofence.value = false; return; }
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            userLocation.value = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            const dist = calcDistance(pos.coords.latitude, pos.coords.longitude, geofenceConfig.value.lat, geofenceConfig.value.lng);
+            isInGeofence.value = dist <= 50;
+        },
+        () => { isInGeofence.value = false; }
+    );
+};
+
+// 管理員用目前位置填入座標
+const useCurrentLocation = () => {
+    if (!navigator.geolocation) { showToast("瀏覽器不支援定位", "warning"); return; }
+    navigator.geolocation.getCurrentPosition(
+        (pos) => { geofenceForm.value.lat = pos.coords.latitude; geofenceForm.value.lng = pos.coords.longitude; showToast("已取得目前位置", "success"); },
+        () => showToast("無法取得位置，請手動輸入", "warning")
+    );
+};
+
+// 儲存圍籬
+const saveGeofence = async () => {
+    if (!geofenceForm.value.lat || !geofenceForm.value.lng) { showToast("請輸入座標", "warning"); return; }
+    await setDoc(doc(db, "passport_config", "geofence"), { lat: geofenceForm.value.lat, lng: geofenceForm.value.lng, radius: 50, updatedAt: new Date().toISOString() });
+    geofenceConfig.value = { ...geofenceForm.value, radius: 50 };
+    showToast("圍籬已儲存", "success");
+};
+
+// 清除圍籬
+const clearGeofence = () => showAppConfirm('清除圍籬', '確定清除？清除後所有人皆可申請', async () => {
+    await deleteDoc(doc(db, "passport_config", "geofence"));
+    geofenceConfig.value = null; geofenceForm.value = { lat: null, lng: null };
+    isInGeofence.value = true; showToast("已清除圍籬", "success");
+});
+
+const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
+
+
 // --- 登入審核系統邏輯 ---
             const loginStatus = ref('idle'); 
             const pendingRequests = ref([]); 
@@ -1239,7 +1379,8 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
             return {
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
-                centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor,
+                centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
+    openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,
                 stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
                 activeHistoryData, showBvmHistory
