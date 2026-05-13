@@ -593,14 +593,62 @@
         </div>
     </div>
 
-    <!-- 教官登入 -->
-    <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="isLoginModalOpen = false">
+    <!-- 審核制教官登入 -->
+    <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="loginStatus === 'idle' ? isLoginModalOpen = false : null">
         <div class="centered-modal bg-white">
-            <div class="px-5 py-5 border-b flex justify-between items-center"><h2 class="text-[20px] font-black text-slate-800">教官模式登入</h2><button @click="isLoginModalOpen = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="px-5 py-5 border-b flex justify-between items-center">
+                <h2 class="text-[20px] font-black text-slate-800">教官模式解鎖</h2>
+                <button v-if="loginStatus === 'idle'" @click="isLoginModalOpen = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
             <div class="modal-body bg-slate-50 space-y-4 pt-5 pb-6">
-                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500 pl-1">教官姓名</label><select v-model="loginForm.name" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none"><option value="" disabled>請選擇...</option><option v-for="inst in instructorsList" :key="inst.name" :value="inst.name">{{ inst.name }}</option></select></div>
-                <div class="space-y-1"><label class="text-[11px] font-black text-slate-500 pl-1">密碼</label><input v-model="loginForm.password" type="password" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none"></div>
-                <button @click="handleLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base mt-4">解鎖權限</button>
+                <template v-if="loginStatus === 'idle'">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-black text-slate-500 pl-1">教官姓名</label>
+                        <select v-model="loginForm.name" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none">
+                            <option value="" disabled>請選擇...</option>
+                            <option v-for="inst in instructorsList" :key="inst.name" :value="inst.name">{{ inst.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- 如果是管理員，顯示密碼框；如果是普通教官，顯示申請按鈕 -->
+                    <div v-if="isSelectedUserAdmin" class="space-y-1 animate-fade-in">
+                        <label class="text-[11px] font-black text-slate-500 pl-1">管理員密碼</label>
+                        <input v-model="loginForm.password" type="password" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none">
+                        <button @click="handleAdminLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base mt-4">管理員登入</button>
+                    </div>
+                    
+                    <button v-else @click="requestLogin" :disabled="!loginForm.name" class="w-full py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base mt-4 disabled:opacity-50 flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> 向管理者申請權限
+                    </button>
+                </template>
+
+                <!-- 等待審核畫面 -->
+                <div v-if="loginStatus === 'requesting'" class="flex flex-col items-center justify-center py-8">
+                    <i class="fa-solid fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                    <h3 class="font-black text-slate-700 text-lg mb-1">正在等待管理者審核...</h3>
+                    <p class="text-xs font-bold text-slate-400">請請管理者於他的裝置上點擊同意</p>
+                    <button @click="cancelLoginRequest" class="mt-6 py-2 px-6 rounded-full bg-slate-200 text-slate-500 font-black text-xs">取消申請</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理員專屬：審核浮動面板 (只有登入為管理員才看得到) -->
+      <div v-if="isAdmin && pendingRequests.length > 0" class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-[400px] px-4 animate-bounce">
+        <div class="bg-indigo-600 rounded-2xl shadow-2xl border-2 border-indigo-400 overflow-hidden text-white">
+            <div class="bg-indigo-800 px-4 py-2 flex justify-between items-center text-xs font-black">
+                <span><i class="fa-solid fa-bell text-amber-300 mr-1"></i> 權限申請通知</span>
+                <span class="bg-rose-500 px-2 py-0.5 rounded-full">{{ pendingRequests.length }}</span>
+            </div>
+            <div class="p-4 space-y-3 max-h-[40vh] overflow-y-auto">
+                <div v-for="req in pendingRequests" :key="req.id" class="flex items-center justify-between bg-white/10 p-3 rounded-xl">
+                    <div class="font-black text-sm">{{ req.name }} <span class="text-[10px] font-normal text-indigo-200 block">申請登入教官模式</span></div>
+                    <div class="flex gap-2">
+                        <button @click="handleApproval(req.id, 'rejected')" class="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center active:scale-90"><i class="fa-solid fa-xmark"></i></button>
+                        <button @click="handleApproval(req.id, 'approved')" class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center active:scale-90"><i class="fa-solid fa-check"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -840,7 +888,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+   import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
     import { createApp, ref, computed, watch, onMounted } from "https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js";
 
@@ -879,10 +927,8 @@
             const activeBvmStep = ref(null);
             const activeHistoryData = ref(null); 
             const bvmState = ref({ isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null, isSqueezing: false });
-
-            const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
-            const studentsList = computed(() => { const s = usersList.value.filter(u => !['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))); return s.length ? s : [{ uid: 'guest', name: '訪客' }]; });
-
+const instructorsList = computed(() => usersList.value.filter(u => ['instructor', 'admin', '教官', '幹部'].some(r => String(u.role || '').toLowerCase().includes(r.toLowerCase()))));
+           const studentsList = computed(() => { return usersList.value.length ? usersList.value : [{ uid: 'guest', name: '訪客' }]; });
             const showToast = (msg, type = 'info') => { toast.value.msg = msg; toast.value.icon = type === 'success' ? 'fa-solid fa-circle-check' : (type === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-info-circle'); toast.value.color = type === 'success' ? '#34d399' : (type === 'warning' ? '#fbbf24' : '#60a5fa'); toast.value.show = true; setTimeout(() => toast.value.show = false, 2500); };
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
             const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
@@ -895,8 +941,101 @@
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
             onMounted(() => fetchData());
 
-            const handleLogin = () => { const u = instructorsList.value.find(i => i.name === loginForm.value.name); if(u && u.password === loginForm.value.password) { isInstructorMode.value = true; currentInstructorName.value = u.name; isLoginModalOpen.value = false; showToast("登入成功", "success"); } else showToast("密碼錯誤", "warning"); };
-            const handleLogout = () => showAppConfirm('登出', '確定退出教官模式？', () => { isInstructorMode.value = false; isEditorOpen.value = false; });
+           // --- 登入審核系統邏輯 ---
+            const loginStatus = ref('idle'); 
+            const pendingRequests = ref([]); 
+            let requestUnsubscribe = null; 
+            let adminUnsubscribe = null; 
+
+            // 判斷目前下拉選單選到的人，是不是管理員
+            const isSelectedUserAdmin = computed(() => {
+                const u = instructorsList.value.find(i => i.name === loginForm.value.name);
+                return ['admin', '管理者'].some(r => String(u?.role || '').toLowerCase().includes(r.toLowerCase()));
+            });
+
+            // 判斷登入成功後的「自己」是不是管理員 (用來決定要不要顯示右上角的審核通知)
+            const isAdmin = computed(() => {
+                if(!isInstructorMode.value) return false;
+                const me = usersList.value.find(u => u.name === currentInstructorName.value);
+                return ['admin', '管理者'].some(r => String(me?.role || '').toLowerCase().includes(r.toLowerCase()));
+            });
+
+            // ★ 新增：自動監聽身分變化，只要是管理員就自動開啟雷達
+            watch(isAdmin, (newVal) => {
+                if (newVal) {
+                    startListeningToRequests(); // 身分變成管理員，開啟雷達
+                } else {
+                    if (adminUnsubscribe) adminUnsubscribe(); // 身分不是管理員，關閉雷達
+                    pendingRequests.value = []; // 清空面板
+                }
+            });
+
+            // 1. 管理員自己登入 (輸入密碼)
+            const handleAdminLogin = () => {
+                const u = instructorsList.value.find(i => i.name === loginForm.value.name);
+                if(u && u.password === loginForm.value.password) {
+                    isInstructorMode.value = true; currentInstructorName.value = u.name;
+                    isLoginModalOpen.value = false; loginForm.value.password = '';
+                    showToast(`管理員登入：${u.name}`, "success");
+                    // 這裡不需要手動呼叫雷達了，上面的 watch 會自動幫我們開
+                } else showToast("密碼錯誤", "warning");
+            };
+
+            // 2. 一般教官點擊「申請權限」
+            const requestLogin = async () => {
+                if(!loginForm.value.name) return;
+                loginStatus.value = 'requesting';
+                const docRef = doc(db, "passport_login_requests", loginForm.value.name);
+                await setDoc(docRef, { name: loginForm.value.name, status: 'pending', timestamp: new Date().getTime() });
+
+                // 監聽自己的申請單狀態
+                requestUnsubscribe = onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.status === 'approved') {
+                            isInstructorMode.value = true; currentInstructorName.value = data.name;
+                            isLoginModalOpen.value = false; loginStatus.value = 'idle';
+                            showToast(`審核通過！解鎖權限`, "success");
+                            cleanUpRequest(docRef);
+                        } else if (data.status === 'rejected') {
+                            loginStatus.value = 'idle'; showToast("管理者已拒絕申請", "warning");
+                            cleanUpRequest(docRef);
+                        }
+                    }
+                });
+            };
+
+            // 取消申請
+            const cancelLoginRequest = async () => {
+                loginStatus.value = 'idle';
+                cleanUpRequest(doc(db, "passport_login_requests", loginForm.value.name));
+            };
+
+            // 清理申請單
+            const cleanUpRequest = (docRef) => {
+                if(requestUnsubscribe) requestUnsubscribe();
+                deleteDoc(docRef).catch(e=>{}); 
+            };
+
+            // 3. 管理員的監聽雷達 (抓取等待審核的單子)
+            const startListeningToRequests = () => {
+                if(!isAdmin.value) return;
+                adminUnsubscribe = onSnapshot(query(collection(db, "passport_login_requests"), where("status", "==", "pending")), (snap) => {
+                    pendingRequests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                });
+            };
+
+            // 管理員按下同意或拒絕
+            const handleApproval = async (id, status) => {
+                await updateDoc(doc(db, "passport_login_requests", id), { status: status });
+                showToast(status === 'approved' ? "已核准" : "已拒絕", "info");
+            };
+
+            // 改寫原本的登出 (登出時關閉雷達)
+            const handleLogout = () => showAppConfirm('登出', '確定退出教官模式？', () => { 
+                isInstructorMode.value = false; isEditorOpen.value = false; 
+                if(adminUnsubscribe) adminUnsubscribe(); 
+            });
             const handleItemClick = (i) => isInstructorMode.value ? openMainModal(i) : showToast("請由教官評核", "warning");
 
             const displayCategories = computed(() => {
@@ -1112,10 +1251,10 @@
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
             return {
-                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogin, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
+                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep,
                 centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor,
-                stepTimers, startStepTimer, stopStepTimer, resetStepTimer,
+                stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, isAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
                 activeHistoryData, showBvmHistory
             };
