@@ -593,10 +593,10 @@
             </div>
         </div>
 
-        <div v-if="editorMode === 'geofence'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
+       <div v-if="editorMode === 'geofence'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
             <div class="p-4 bg-white border-b space-y-3">
                 <h3 class="font-black text-slate-800"><i class="fa-solid fa-location-dot text-rose-500 mr-2"></i>電子圍籬設定</h3>
-                <p class="text-xs text-slate-400 font-bold">設定允許申請教官模式的地理範圍（半徑 50 公尺）</p>
+                <p class="text-xs text-slate-400 font-bold">設定允許申請教官模式的地理範圍</p>
                 
                 <div class="bg-slate-50 p-3 rounded-xl border space-y-3">
                     <div class="space-y-1">
@@ -611,8 +611,17 @@
                                class="w-full bg-white border rounded-lg px-3 py-2 text-sm font-num outline-none"
                                placeholder="例：121.564885">
                     </div>
+                    <!-- ▼ 新增：半徑輸入框 ▼ -->
+                    <div class="space-y-1 border-t border-slate-200 pt-2">
+                        <label class="text-[11px] font-black text-slate-500 text-indigo-600">圍籬半徑 Radius (公尺)</label>
+                        <input v-model.number="geofenceForm.radius" type="number" step="5" min="10"
+                               class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-num outline-none"
+                               placeholder="預設 50">
+                    </div>
+                    <!-- ▲ 新增：半徑輸入框 ▲ -->
+
                     <button @click="useCurrentLocation" 
-                            class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-black text-sm flex items-center justify-center gap-2">
+                            class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-black text-sm flex items-center justify-center gap-2 mt-2">
                         <i class="fa-solid fa-crosshairs"></i> 使用目前所在位置
                     </button>
                 </div>
@@ -620,7 +629,8 @@
                 <div class="flex items-center gap-2 p-3 rounded-xl border bg-white">
                     <i class="fa-solid fa-circle-info text-slate-400"></i>
                     <div>
-                        <p class="text-xs font-black text-slate-600">固定半徑：50 公尺</p>
+                        <!-- ▼ 修改文字讓它顯示目前的半徑 ▼ -->
+                        <p class="text-xs font-black text-slate-600">有效半徑：{{ geofenceForm.radius || 50 }} 公尺</p>
                         <p class="text-[10px] text-slate-400">教官需在此範圍內才可申請登入</p>
                     </div>
                 </div>
@@ -647,10 +657,7 @@
                 </button>
             </div>
         </div>
-
-    </div>
-
-
+</div>
 
     <!-- 審核制教官登入 -->
     <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="loginStatus === 'idle' ? isLoginModalOpen = false : null">
@@ -1008,30 +1015,41 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
             const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
-            onMounted(() => { 
+            onMounted(async () => { 
     fetchData(); 
-    fetchGeofence();   // ← 加這行
-    checkGeofence();   // ← 加這行
+    await fetchGeofence(); // 加上 await，等設定抓回來
+    checkGeofence();       // 再執行驗證
 });
-// 圍籬相關
-const geofenceForm = ref({ lat: null, lng: null });
-const geofenceConfig = ref(null); // 從 Firebase 讀取的圍籬設定
-const userLocation = ref(null);   // 使用者目前位置
-const isInGeofence = ref(true);   // 預設開放（未設定時）
+// ★ 加上這一段：監聽鎖頭按鈕，每次點開時都重新抓取定位
+    watch(isLoginModalOpen, (newVal) => {
+        if (newVal) {
+            checkGeofence();
+        }
+    });
+// 圍籬相關 (加上 radius: 50 預設值)
+const geofenceForm = ref({ lat: null, lng: null, radius: 50 });
+const geofenceConfig = ref(null); 
+const userLocation = ref(null);   
+const isInGeofence = ref(true);   
 
-// 讀取圍籬設定（onMounted 時呼叫）
+// 讀取圍籬設定 (加上讀取 radius)
 const fetchGeofence = async () => {
     try {
         const snap = await getDocs(collection(db, "passport_config"));
         const cfg = snap.docs.find(d => d.id === 'geofence');
         if (cfg) {
             geofenceConfig.value = cfg.data();
-            geofenceForm.value = { lat: cfg.data().lat, lng: cfg.data().lng };
+            // 如果舊資料沒有 radius，預設給 50
+            geofenceForm.value = { 
+                lat: cfg.data().lat, 
+                lng: cfg.data().lng, 
+                radius: cfg.data().radius || 50 
+            };
         }
     } catch(e) {}
 };
 
-// 計算兩點距離（公尺）
+// 計算兩點距離（公尺）- 維持不變
 const calcDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -1040,17 +1058,30 @@ const calcDistance = (lat1, lng1, lat2, lng2) => {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 };
 
-// 取得使用者位置並判斷是否在圍籬內
+// 取得使用者位置並判斷是否在圍籬內 (將 50 改成變數)
 const checkGeofence = () => {
     if (!geofenceConfig.value?.lat) { isInGeofence.value = true; return; }
-    if (!navigator.geolocation) { isInGeofence.value = false; return; }
+    if (!navigator.geolocation) { 
+        isInGeofence.value = false; 
+        showToast("瀏覽器不支援定位", "warning");
+        return; 
+    }
+    
+    // 取得目前設定的半徑
+    const allowedRadius = geofenceConfig.value.radius || 50;
+
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             userLocation.value = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             const dist = calcDistance(pos.coords.latitude, pos.coords.longitude, geofenceConfig.value.lat, geofenceConfig.value.lng);
-            isInGeofence.value = dist <= 50;
+            // 判斷：距離是否小於等於「設定的半徑」
+            isInGeofence.value = dist <= allowedRadius;
         },
-        () => { isInGeofence.value = false; }
+        () => { 
+            isInGeofence.value = false; 
+            showToast("無法取得定位", "warning");
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
 };
 
@@ -1058,26 +1089,42 @@ const checkGeofence = () => {
 const useCurrentLocation = () => {
     if (!navigator.geolocation) { showToast("瀏覽器不支援定位", "warning"); return; }
     navigator.geolocation.getCurrentPosition(
-        (pos) => { geofenceForm.value.lat = pos.coords.latitude; geofenceForm.value.lng = pos.coords.longitude; showToast("已取得目前位置", "success"); },
+        (pos) => { 
+            geofenceForm.value.lat = pos.coords.latitude; 
+            geofenceForm.value.lng = pos.coords.longitude; 
+            showToast("已取得目前位置", "success"); 
+        },
         () => showToast("無法取得位置，請手動輸入", "warning")
     );
 };
 
-// 儲存圍籬
+// 儲存圍籬 (將半徑一起存入 Firebase)
 const saveGeofence = async () => {
     if (!geofenceForm.value.lat || !geofenceForm.value.lng) { showToast("請輸入座標", "warning"); return; }
-    await setDoc(doc(db, "passport_config", "geofence"), { lat: geofenceForm.value.lat, lng: geofenceForm.value.lng, radius: 50, updatedAt: new Date().toISOString() });
-    geofenceConfig.value = { ...geofenceForm.value, radius: 50 };
-    showToast("圍籬已儲存", "success");
+    
+    // 防呆：確保 radius 是數字，如果不小心被清空，預設 50
+    const finalRadius = Number(geofenceForm.value.radius) || 50;
+
+    await setDoc(doc(db, "passport_config", "geofence"), { 
+        lat: geofenceForm.value.lat, 
+        lng: geofenceForm.value.lng, 
+        radius: finalRadius, 
+        updatedAt: new Date().toISOString() 
+    });
+    
+    geofenceConfig.value = { ...geofenceForm.value, radius: finalRadius };
+    checkGeofence(); // 儲存後立刻重新驗證自己有沒有在圈圈裡
+    showToast(`圍籬已儲存 (半徑 ${finalRadius}m)`, "success");
 };
 
-// 清除圍籬
+// 清除圍籬 (重置時連 radius 一起恢復預設)
 const clearGeofence = () => showAppConfirm('清除圍籬', '確定清除？清除後所有人皆可申請', async () => {
     await deleteDoc(doc(db, "passport_config", "geofence"));
-    geofenceConfig.value = null; geofenceForm.value = { lat: null, lng: null };
-    isInGeofence.value = true; showToast("已清除圍籬", "success");
+    geofenceConfig.value = null; 
+    geofenceForm.value = { lat: null, lng: null, radius: 50 };
+    isInGeofence.value = true; 
+    showToast("已清除圍籬", "success");
 });
-
 const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
 
 
