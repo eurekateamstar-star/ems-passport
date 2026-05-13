@@ -635,7 +635,8 @@
     </div>
 
     <!-- 管理員專屬：審核浮動面板 (只有登入為管理員才看得到) -->
-      <div v-if="isAdmin && pendingRequests.length > 0" class="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] w-full max-w-[400px] px-4 animate-bounce">
+     <div v-if="isCurrentlyAdmin && pendingRequests.length > 0" 
+     class="fixed top-20 left-1/2 -translate-x-1/2 z-[99999] w-full max-w-[400px] px-4 animate-bounce">
         <div class="bg-indigo-600 rounded-2xl shadow-2xl border-2 border-indigo-400 overflow-hidden text-white">
             <div class="bg-indigo-800 px-4 py-2 flex justify-between items-center text-xs font-black">
                 <span><i class="fa-solid fa-bell text-amber-300 mr-1"></i> 權限申請通知</span>
@@ -940,34 +941,27 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
 
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
             onMounted(() => fetchData());
-
-           // --- 登入審核系統邏輯 ---
+// --- 登入審核系統邏輯 ---
             const loginStatus = ref('idle'); 
             const pendingRequests = ref([]); 
             let requestUnsubscribe = null; 
-            let adminUnsubscribe = null; 
 
-            // 判斷目前下拉選單選到的人，是不是管理員
+            // 判斷目前下拉選單選到的人，是不是管理員 (決定要不要顯示密碼框)
             const isSelectedUserAdmin = computed(() => {
                 const u = instructorsList.value.find(i => i.name === loginForm.value.name);
                 return ['admin', '管理者'].some(r => String(u?.role || '').toLowerCase().includes(r.toLowerCase()));
             });
 
-            // 判斷登入成功後的「自己」是不是管理員 (用來決定要不要顯示右上角的審核通知)
-            const isAdmin = computed(() => {
+            // 判斷「目前已經登入的教官」，是不是管理員 (決定要不要顯示上方的藍色通知)
+            const isCurrentlyAdmin = computed(() => {
                 if(!isInstructorMode.value) return false;
                 const me = usersList.value.find(u => u.name === currentInstructorName.value);
                 return ['admin', '管理者'].some(r => String(me?.role || '').toLowerCase().includes(r.toLowerCase()));
             });
 
-            // ★ 新增：自動監聽身分變化，只要是管理員就自動開啟雷達
-            watch(isAdmin, (newVal) => {
-                if (newVal) {
-                    startListeningToRequests(); // 身分變成管理員，開啟雷達
-                } else {
-                    if (adminUnsubscribe) adminUnsubscribe(); // 身分不是管理員，關閉雷達
-                    pendingRequests.value = []; // 清空面板
-                }
+            // ★ 終極解法：網頁一打開，就在背景「常駐」開啟雷達，不管誰登入都絕對不會漏接！
+            onSnapshot(query(collection(db, "passport_login_requests"), where("status", "==", "pending")), (snap) => {
+                pendingRequests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             });
 
             // 1. 管理員自己登入 (輸入密碼)
@@ -977,7 +971,6 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
                     isInstructorMode.value = true; currentInstructorName.value = u.name;
                     isLoginModalOpen.value = false; loginForm.value.password = '';
                     showToast(`管理員登入：${u.name}`, "success");
-                    // 這裡不需要手動呼叫雷達了，上面的 watch 會自動幫我們開
                 } else showToast("密碼錯誤", "warning");
             };
 
@@ -1017,25 +1010,18 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
                 deleteDoc(docRef).catch(e=>{}); 
             };
 
-            // 3. 管理員的監聽雷達 (抓取等待審核的單子)
-            const startListeningToRequests = () => {
-                if(!isAdmin.value) return;
-                adminUnsubscribe = onSnapshot(query(collection(db, "passport_login_requests"), where("status", "==", "pending")), (snap) => {
-                    pendingRequests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                });
-            };
-
             // 管理員按下同意或拒絕
             const handleApproval = async (id, status) => {
                 await updateDoc(doc(db, "passport_login_requests", id), { status: status });
                 showToast(status === 'approved' ? "已核准" : "已拒絕", "info");
             };
 
-            // 改寫原本的登出 (登出時關閉雷達)
+            // 一般登出
             const handleLogout = () => showAppConfirm('登出', '確定退出教官模式？', () => { 
                 isInstructorMode.value = false; isEditorOpen.value = false; 
-                if(adminUnsubscribe) adminUnsubscribe(); 
             });
+            // ------------------------------------
+            // ------------------------------------
             const handleItemClick = (i) => isInstructorMode.value ? openMainModal(i) : showToast("請由教官評核", "warning");
 
             const displayCategories = computed(() => {
@@ -1252,9 +1238,9 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
 
             return {
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
-                gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep,
+                gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
                 centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor,
-                stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, isAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
+                stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
                 activeHistoryData, showBvmHistory
             };
