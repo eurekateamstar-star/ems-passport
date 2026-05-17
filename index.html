@@ -908,7 +908,7 @@
                     </div>
 
                     <!-- 主要面板區塊 (深灰色) -->
-                    <div class="mx-4 mb-4 flex-1 bg-[#7e858d] rounded-b-3xl rounded-t-sm relative shadow-[inset_0_5px_15px_rgba(0,0,0,0.3)] border-x border-b border-slate-600 overflow-hidden">
+<div class="mx-4 mb-4 flex-1 bg-[#7e858d] rounded-b-3xl rounded-t-sm relative shadow-[inset_0_5px_15px_rgba(0,0,0,0.3)] border-x border-b border-slate-600">
                         
                         <!-- 插座區 (左上) -->
                         <div class="absolute -top-6 left-8 z-30 flex flex-col items-center">
@@ -1013,27 +1013,29 @@
                             WL120ES10<br>Practi-TRAINER® Essentials
                         </div>
 
-                        <!-- CPR 面板 (從底部滑出) -->
-                        <div class="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur text-white p-4 transition-transform duration-500 z-50 rounded-t-2xl border-t border-slate-600"
-                             :class="aedState.status === 'cpr' ? 'translate-y-0' : 'translate-y-full'">
-                            <div class="flex justify-between items-center mb-2">
-                                <div>
-                                    <div class="text-[10px] text-slate-400 font-bold mb-1">CPR 倒數計時</div>
-                                    <div class="text-red-500 font-mono text-4xl font-black tracking-wider">{{ formatCprTime(aedState.cprTimeLeft) }}</div>
-                                </div>
-                                <div class="flex flex-col items-end">
-                                    <i class="fa-solid fa-heart-pulse text-3xl transition-transform duration-100" 
-                                       :class="aedState.metronomePulse ? 'text-rose-500 scale-125' : 'text-slate-600 scale-100'"></i>
-                                    <span class="text-xs font-bold text-slate-500 mt-1">{{ aedState.bpm }} BPM</span>
-                                </div>
+                </div>
+   <!-- ★★★ CPR 面板移到這裡！(深灰色外面，白色外殼裡面) ★★★ -->
+                    <div class="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur text-white p-4 transition-transform duration-500 z-50 rounded-t-2xl border-t border-slate-600"
+                         :class="aedState.status === 'cpr' ? 'translate-y-0' : 'translate-y-[120%]'">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <div class="text-[10px] text-slate-400 font-bold mb-1">CPR 倒數計時</div>
+                                <div class="text-red-500 font-mono text-4xl font-black tracking-wider">{{ formatCprTime(aedState.cprTimeLeft) }}</div>
                             </div>
-                            <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
-                                <div class="h-full bg-gradient-to-r from-rose-600 to-orange-500 transition-all duration-1000 ease-linear"
-                                     :style="{ width: ((aedState.cprTimeLeft / 120) * 100) + '%' }"></div>
+                            <div class="flex flex-col items-end">
+                                <i class="fa-solid fa-heart-pulse text-3xl transition-transform duration-100" 
+                                   :class="aedState.metronomePulse ? 'text-rose-500 scale-125' : 'text-slate-600 scale-100'"></i>
+                                <span class="text-xs font-bold text-slate-500 mt-1">{{ aedState.bpm }} BPM</span>
                             </div>
                         </div>
+                        <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden border border-slate-600">
+                            <div class="h-full bg-gradient-to-r from-rose-600 to-orange-500 transition-all duration-1000 ease-linear"
+                                 :style="{ width: ((aedState.cprTimeLeft / 120) * 100) + '%' }"></div>
+                        </div>
                     </div>
-                </div>
+
+
+                </div> <!-- 這是白色 AED 主機外殼的結束標籤 -->
             </div>
 
             <!-- 底部動作列 -->
@@ -1157,8 +1159,9 @@
                 }
             };
 
-            const playBeep = (freq, duration, vol) => {
+           const playBeep = (freq, duration, vol) => {
                 if (!aedAudioCtx) return;
+                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume(); // ★ 強制喚醒
                 try {
                     const osc = aedAudioCtx.createOscillator();
                     const gain = aedAudioCtx.createGain();
@@ -1173,6 +1176,7 @@
 
             const playChargingSound = (duration) => {
                 if (!aedAudioCtx) return;
+                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume(); // ★ 強制喚醒
                 try {
                     const osc = aedAudioCtx.createOscillator();
                     const gain = aedAudioCtx.createGain();
@@ -1188,6 +1192,7 @@
 
             const playZapSound = () => {
                 if (!aedAudioCtx) return;
+                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume(); // ★ 強制喚醒
                 try {
                     const osc = aedAudioCtx.createOscillator();
                     const gain = aedAudioCtx.createGain();
@@ -1199,7 +1204,6 @@
                     osc.start(); osc.stop(now + 0.5);
                 } catch(e) {}
             };
-
             const speak = (text, callback) => {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
@@ -1214,7 +1218,8 @@
             };
 
             // 流程控制
-            const startAedGame = (step) => {
+           const startAedGame = (step) => {
+                initAudioEngine(); // ★ 趁使用者點擊按鈕的瞬間，立刻破解手機音效限制！
                 activeAedStep.value = step;
                 isAedModalOpen.value = true;
                 aedState.value = {
@@ -1249,7 +1254,7 @@
                 }, 500);
             };
 
-            const plugInConnector = () => {
+           const plugInConnector = () => {
                 initAudioEngine();
                 aedState.value.connectorPlugged = true;
                 aedState.value.socketLedState = 'green';
@@ -1260,21 +1265,28 @@
                 aedState.value.ledNumber = '2';
                 speak("正在分析病人心律，不要觸碰病人");
                 
+                // 8秒後：進入建議電擊
                 addAedTimeout(() => {
                     aedState.value.message = "建議電擊";
-                    speak("建議電擊", () => {
+                    speak("建議電擊");
+                    
+                    // 2秒後：進入充電中 (不依賴語音唸完)
+                    addAedTimeout(() => {
                         aedState.value.message = "充電中...";
-                        playChargingSound(9);
+                        playChargingSound(8);
                         speak("正在充電，不要觸碰病人身體");
                         
+                        // 8秒後：充電完成，可以按按鈕
                         addAedTimeout(() => {
                             aedState.value.status = 'shock_ready';
                             aedState.value.message = "按下橘色按鈕";
                             speak("立刻進行電擊，按下橘色閃爍按鈕");
                             playBeep(800, 0.5, 1.0); 
-                        }, 9000);
-                    });
-                }, 8000); // 模擬分析時間
+                        }, 8000);
+
+                    }, 2000);
+
+                }, 8000); // 模擬分析心律的時間
             };
 
             const deliverShock = () => {
@@ -1285,9 +1297,12 @@
                 aedState.value.ledNumber = '3';
                 aedState.value.message = "電擊完成";
                 
-                speak("電擊完成", () => {
+                speak("電擊完成");
+                
+                // 1.5秒後自動進入 CPR (不依賴語音唸完)
+                addAedTimeout(() => {
                     startCPRPhase();
-                });
+                }, 1500);
             };
 
             const startCPRPhase = () => {
