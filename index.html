@@ -1047,6 +1047,23 @@
                     結束並退出
                 </button>
             </footer>
+<!-- ★★★ 手機靜音警告彈窗 ★★★ -->
+            <div v-if="aedState.showAudioWarning" class="absolute inset-0 bg-slate-900/90 z-[9999] backdrop-blur-sm flex items-center justify-center p-6">
+                <div class="bg-white rounded-[24px] p-6 w-full max-w-sm text-center shadow-2xl flex flex-col items-center">
+                    <div class="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center text-3xl mb-4 animate-bounce">
+                        <i class="fa-solid fa-bell-slash"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-800 mb-2">請關閉手機靜音！</h3>
+                    <p class="text-sm font-bold text-slate-500 mb-6 leading-relaxed">
+                        AED 模擬器包含重要的語音與節拍器音效。<br>
+                        如果您使用手機（尤其是 iPhone），請<span class="text-rose-500 underline">滑出控制中心，確認已關閉靜音模式 (鈴鐺圖示)</span>，並將音量調大。
+                    </p>
+                    <button @click="dismissAudioWarning" class="w-full py-4 bg-blue-600 text-white rounded-xl font-black text-lg shadow-lg active:scale-95 transition-transform flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-volume-high"></i> 我已開啟聲音，進入模擬器
+                    </button>
+                    <button @click="stopAedGame" class="mt-4 text-xs font-bold text-slate-400 p-2">取消退出</button>
+                </div>
+            </div>
         </template>
 
         <!-- 抽卡遊戲 UI -->
@@ -1132,17 +1149,18 @@
             const activeAedStep = ref(null);
             
             const aedState = ref({
-                status: 'off', // off, on, analyzing, shock_ready, cpr, done
-                message: '(請按綠色按鈕開機)',
+                status: 'off', 
+                message: '(請按綠色按鈕開機)', 
                 ledNumber: '-',
-                socketLedState: 'off', // off, ping, green
-                connectorPlugged: false,
-                cprTimeLeft: 120,
+                socketLedState: 'off', 
+                connectorPlugged: false, 
+                cprTimeLeft: 120, 
                 bpm: 110,
-                metronomePulse: false,
-                timeoutIds: [],
-                cprTimerId: null,
-                metronomeId: null
+                metronomePulse: false, 
+                timeoutIds: [], 
+                cprTimerId: null, 
+                metronomeId: null,
+                showAudioWarning: true // ★ 新增這個控制警告彈窗的變數
             });
 
             const formatCprTime = (seconds) => {
@@ -1273,15 +1291,20 @@
             };
 
             // 流程控制
-           const startAedGame = (step) => {
-                initAudioEngine(); // ★ 趁使用者點擊按鈕的瞬間，立刻破解手機音效限制！
+          const startAedGame = (step) => {
                 activeAedStep.value = step;
                 isAedModalOpen.value = true;
                 aedState.value = {
                     status: 'off', message: '(請按綠色按鈕開機)', ledNumber: '-',
                     socketLedState: 'off', connectorPlugged: false, cprTimeLeft: 120, bpm: 110,
-                    metronomePulse: false, timeoutIds: [], cprTimerId: null, metronomeId: null
+                    metronomePulse: false, timeoutIds: [], cprTimerId: null, metronomeId: null,
+                    showAudioWarning: true // ★ 點開就先顯示警告
                 };
+            };
+// ★ 使用者點擊「我已開啟聲音」時觸發
+            const dismissAudioWarning = () => {
+                aedState.value.showAudioWarning = false; // 關閉彈窗
+                initAudioEngine(); // ★ 在這裡強制解鎖手機音效！(因為是使用者親手點擊的，成功率 100%)
             };
 
             const stopAedGame = () => {
@@ -1838,7 +1861,7 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
                 centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
     openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
-startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime,
+startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,
                 stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
                 activeHistoryData, showBvmHistory
