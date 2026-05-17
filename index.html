@@ -1165,8 +1165,9 @@
                 aedState.value.timeoutIds.push(id);
             };
 
-            // 音效與語音核心
-          // 音效與語音核心 (防彈改寫版)
+            // 音效與語音核心 (全域保活改寫版)
+            let aedKeepAliveOsc = null;
+
             const getAudioCtx = () => {
                 if (!window.aedAudioCtx) {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -1178,17 +1179,29 @@
                 return window.aedAudioCtx;
             };
 
-            const initAudioEngine = () => {
+            // ★ 啟動一個持續不斷的「人耳聽不見的音頻」，強制霸佔手機音訊通道，防止 iOS 偷關閉！
+            const startKeepAliveAudio = () => {
                 try {
                     const ctx = getAudioCtx();
-                    if (ctx) {
-                        const buffer = ctx.createBuffer(1, 1, 22050);
-                        const source = ctx.createBufferSource();
-                        source.buffer = buffer; source.connect(ctx.destination);
-                        if (source.start) source.start(0);
-                    }
+                    if (!ctx || aedKeepAliveOsc) return;
+                    aedKeepAliveOsc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    aedKeepAliveOsc.connect(gain);
+                    gain.connect(ctx.destination);
+                    gain.gain.value = 0.00001; // 極低音量，人耳聽不到
+                    aedKeepAliveOsc.start();
                 } catch(e) {}
+            };
 
+            const stopKeepAliveAudio = () => {
+                if (aedKeepAliveOsc) {
+                    try { aedKeepAliveOsc.stop(); aedKeepAliveOsc.disconnect(); } catch(e){}
+                    aedKeepAliveOsc = null;
+                }
+            };
+
+            const initAudioEngine = () => {
+                startKeepAliveAudio(); // 點擊瞬間啟動保活
                 if ('speechSynthesis' in window) {
                     if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
                     const warmUp = new SpeechSynthesisUtterance(" ");
@@ -1203,15 +1216,14 @@
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
                     osc.connect(gain); gain.connect(ctx.destination);
-                    osc.type = 'square'; // 改用方波，手機喇叭穿透力最強
+                    osc.type = 'square'; 
                     const now = ctx.currentTime;
                     osc.frequency.setValueAtTime(freq, now);
                     gain.gain.setValueAtTime(vol, now);
-                    // 加入淡出效果避免手機喇叭爆音保護機制觸發
                     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
                     osc.start(now);
                     osc.stop(now + duration);
-                } catch (e) { console.error("Beep Error", e); }
+                } catch (e) { }
             };
 
             const playChargingSound = (duration) => {
@@ -1274,6 +1286,7 @@
 
             const stopAedGame = () => {
                 clearAllAedTimers();
+                stopKeepAliveAudio(); // ★ 關閉 AED 時釋放音訊通道
                 if ('speechSynthesis' in window) window.speechSynthesis.cancel();
                 isAedModalOpen.value = false;
             };
