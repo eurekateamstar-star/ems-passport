@@ -1083,6 +1083,36 @@
     const DEFAULT_CAT_ORDER = {'基本技能':0,'呼吸道管理':1,'呼吸管理':2,'現場處置':3,'外科器材運用':4,'運送患者及搬運':5,'內科器材運用':6,'內外科流程':7,'特殊情形':8};
     const colorThemes = [{bg:'bg-blue-600',text:'text-blue-600',border:'border-blue-700'},{bg:'bg-indigo-600',text:'text-indigo-600',border:'border-indigo-700'},{bg:'bg-emerald-600',text:'text-emerald-600',border:'border-emerald-700'},{bg:'bg-rose-600',text:'text-rose-600',border:'border-rose-700'},{bg:'bg-amber-500',text:'text-amber-600',border:'border-amber-600'},{bg:'bg-cyan-600',text:'text-cyan-600',border:'border-cyan-700'},{bg:'bg-purple-600',text:'text-purple-600',border:'border-purple-700'},{bg:'bg-pink-600',text:'text-pink-600',border:'border-pink-700'}];
  let aedAudioCtx = null;
+
+    // ★★★ 加入這段「全域暴力解鎖音效」程式碼 ★★★
+    const forceUnlockAudio = () => {
+        if (!aedAudioCtx) {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                aedAudioCtx = new AudioContext();
+            } catch (e) { return; }
+        }
+        if (aedAudioCtx.state === 'suspended') {
+            aedAudioCtx.resume();
+        }
+        // 播放 0.01 秒的無聲音頻來欺騙手機瀏覽器
+        try {
+            const buffer = aedAudioCtx.createBuffer(1, 1, 22050);
+            const source = aedAudioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(aedAudioCtx.destination);
+            if (source.start) source.start(0);
+        } catch(e) {}
+        
+        // 解鎖成功後，移除監聽器，避免浪費效能
+        document.removeEventListener('touchstart', forceUnlockAudio);
+        document.removeEventListener('click', forceUnlockAudio);
+    };
+    // 監聽使用者的第一次觸控或點擊，立刻解鎖
+    document.addEventListener('touchstart', forceUnlockAudio, { once: true });
+    document.addEventListener('click', forceUnlockAudio, { once: true });
+    // ★★★ 結束 ★★★
+
     createApp({
         setup() {
             const slider = ref(null), tabsScrollRef = ref(null), activeTab = ref(0), isLoading = ref(true), isSubmitting = ref(false), isInstructorMode = ref(false), isLoginModalOpen = ref(false);
@@ -1136,20 +1166,27 @@
             };
 
             // 音效與語音核心
-            const initAudioEngine = () => {
-                if (!aedAudioCtx) {
-                    try {
-                        const AudioContext = window.AudioContext || window.webkitAudioContext;
-                        aedAudioCtx = new AudioContext();
-                    } catch (e) { console.error("AudioContext not supported"); return; }
+          // 音效與語音核心 (防彈改寫版)
+            const getAudioCtx = () => {
+                if (!window.aedAudioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) window.aedAudioCtx = new AudioContext();
                 }
-                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume();
-                
+                if (window.aedAudioCtx && window.aedAudioCtx.state === 'suspended') {
+                    window.aedAudioCtx.resume();
+                }
+                return window.aedAudioCtx;
+            };
+
+            const initAudioEngine = () => {
                 try {
-                    const buffer = aedAudioCtx.createBuffer(1, 1, 22050);
-                    const source = aedAudioCtx.createBufferSource();
-                    source.buffer = buffer; source.connect(aedAudioCtx.destination);
-                    if (source.start) source.start(0);
+                    const ctx = getAudioCtx();
+                    if (ctx) {
+                        const buffer = ctx.createBuffer(1, 1, 22050);
+                        const source = ctx.createBufferSource();
+                        source.buffer = buffer; source.connect(ctx.destination);
+                        if (source.start) source.start(0);
+                    }
                 } catch(e) {}
 
                 if ('speechSynthesis' in window) {
@@ -1159,49 +1196,55 @@
                 }
             };
 
-           const playBeep = (freq, duration, vol) => {
-                if (!aedAudioCtx) return;
-                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume(); // ★ 強制喚醒
+            const playBeep = (freq, duration, vol) => {
                 try {
-                    const osc = aedAudioCtx.createOscillator();
-                    const gain = aedAudioCtx.createGain();
-                    osc.connect(gain); gain.connect(aedAudioCtx.destination);
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq, aedAudioCtx.currentTime);
-                    gain.gain.setValueAtTime(vol, aedAudioCtx.currentTime);
-                    osc.start(aedAudioCtx.currentTime);
-                    osc.stop(aedAudioCtx.currentTime + duration);
-                } catch (e) {}
+                    const ctx = getAudioCtx();
+                    if (!ctx) return;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'square'; // 改用方波，手機喇叭穿透力最強
+                    const now = ctx.currentTime;
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(vol, now);
+                    // 加入淡出效果避免手機喇叭爆音保護機制觸發
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    osc.start(now);
+                    osc.stop(now + duration);
+                } catch (e) { console.error("Beep Error", e); }
             };
 
             const playChargingSound = (duration) => {
-                if (!aedAudioCtx) return;
-                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume(); // ★ 強制喚醒
                 try {
-                    const osc = aedAudioCtx.createOscillator();
-                    const gain = aedAudioCtx.createGain();
-                    osc.connect(gain); gain.connect(aedAudioCtx.destination);
-                    osc.type = 'sawtooth'; const now = aedAudioCtx.currentTime;
+                    const ctx = getAudioCtx();
+                    if (!ctx) return;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'square'; 
+                    const now = ctx.currentTime;
                     osc.frequency.setValueAtTime(200, now);
                     osc.frequency.linearRampToValueAtTime(800, now + duration);
                     gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.linearRampToValueAtTime(0, now + duration);
-                    osc.start(); osc.stop(now + duration);
+                    gain.gain.linearRampToValueAtTime(0.001, now + duration);
+                    osc.start(now); osc.stop(now + duration);
                 } catch(e) {}
             };
 
             const playZapSound = () => {
-                if (!aedAudioCtx) return;
-                if (aedAudioCtx.state === 'suspended') aedAudioCtx.resume(); // ★ 強制喚醒
                 try {
-                    const osc = aedAudioCtx.createOscillator();
-                    const gain = aedAudioCtx.createGain();
-                    osc.connect(gain); gain.connect(aedAudioCtx.destination);
-                    osc.type = 'sawtooth'; const now = aedAudioCtx.currentTime;
-                    osc.frequency.setValueAtTime(100, now);
-                    osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.5);
-                    gain.gain.value = 0.8; gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                    osc.start(); osc.stop(now + 0.5);
+                    const ctx = getAudioCtx();
+                    if (!ctx) return;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sawtooth'; 
+                    const now = ctx.currentTime;
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
+                    gain.gain.setValueAtTime(1.0, now); 
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    osc.start(now); osc.stop(now + 0.5);
                 } catch(e) {}
             };
             const speak = (text, callback) => {
