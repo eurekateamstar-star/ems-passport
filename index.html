@@ -480,8 +480,9 @@
     <option value="game">🎮 隨機抽卡挑戰</option>
     <option value="timer">⏱️ 高精度計時考核</option>
     <option value="bvm">🌬️ BVM 吹氣速率挑戰</option>
-    <!-- 👇 新增這一行 👇 -->
     <option value="aed">🫀 AED 模擬操作挑戰</option>
+    <!-- 👇 新增這行：12導程選項 👇 -->
+    <option value="ecg12">⚡ 12導程貼片放置挑戰</option>
 </select>
 </div>
 
@@ -801,7 +802,53 @@
         </div>
     </div>
 </div>
+<!-- AED 模擬器入口 UI 結束的 div 之後，加入以下程式碼 -->
 
+<!-- 12導程心電圖挑戰入口 UI -->
+<div v-if="step.mode === 'ecg12'" class="mt-4 p-4 rounded-2xl bg-fuchsia-50 border border-fuchsia-100 text-center relative overflow-hidden">
+    <div class="relative z-10">
+        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-fuchsia-500">
+            <i class="fa-solid fa-heart-circle-bolt text-xl"></i>
+        </div>
+        <div class="mb-4">
+            <h4 class="font-black text-fuchsia-700">12 導程貼片放置挑戰</h4>
+            <p class="text-[10px] font-bold text-slate-500 mt-1">請將 10 個導程貼片放置於正確的解剖位置</p>
+        </div>
+        
+        <button @click="startEcgGame(step)" class="w-full bg-fuchsia-600 text-white py-3.5 rounded-xl font-black text-[13px] shadow-lg active:scale-95 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-play"></i> 開啟 EKG 模擬器
+        </button>
+
+        <!-- ★ 新增的成績與錯誤顯示區塊 ★ -->
+        <div v-if="gradingState[step.globalIdx]?.pass !== null" class="mt-4 text-left">
+            
+            <!-- 如果通過 (綠色) -->
+            <div v-if="gradingState[step.globalIdx].pass" class="p-3 bg-emerald-100 rounded-xl border border-emerald-200">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i> 挑戰成功</span>
+                    <span class="text-lg font-black text-emerald-700">{{ gradingState[step.globalIdx].ecgDetails?.score || 100 }} 分</span>
+                </div>
+                <p class="text-[10px] font-bold text-emerald-600">全數導程放置正確</p>
+            </div>
+
+            <!-- 如果未通過 (紅色) -->
+            <div v-else class="p-3 bg-rose-100 rounded-xl border border-rose-200">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black text-rose-700"><i class="fa-solid fa-circle-xmark mr-1"></i> 挑戰失敗</span>
+                    <span class="text-lg font-black text-rose-700">{{ gradingState[step.globalIdx].ecgDetails?.score || 0 }} 分</span>
+                </div>
+                <p class="text-[10px] font-bold text-rose-600 leading-snug">
+                    錯誤位置：
+                    <span v-if="gradingState[step.globalIdx].ecgDetails?.wrongLeads?.length" class="text-rose-700 font-black">
+                        {{ gradingState[step.globalIdx].ecgDetails.wrongLeads.join(', ') }}
+                    </span>
+                    <span v-else>未完成放置</span>
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
        
                             <!-- 抽卡遊戲入口 UI -->
                             <div v-if="step.mode === 'game'" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
@@ -880,7 +927,100 @@
     </div>
 
     <!-- 遊戲挑戰全螢幕 (整合抽卡與 BVM) -->
-    <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen || isBvmModalOpen || isAedModalOpen }">
+    <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen || isBvmModalOpen || isAedModalOpen || isEcgModalOpen }">
+
+    <!-- 在 AED 區塊的下方，或者 Game 區塊的下方，加入這整段 template -->
+    
+    <!-- 12 導程心電圖遊戲 UI (專業擬真覆盤版) -->
+    <template v-if="isEcgModalOpen">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm z-[2000] flex flex-col justify-end">
+            <!-- 模擬手機彈窗的外觀 -->
+            <div class="bg-[#f2f2f7] w-full max-w-[450px] mx-auto h-[90dvh] rounded-t-3xl flex flex-col overflow-hidden shadow-2xl relative">
+                
+                <!-- Header -->
+                <div class="p-4 text-center border-b bg-white shrink-0 relative">
+                    <h4 class="font-black text-slate-800 text-lg">
+                        {{ ecgState.reviewMode ? '考核覆盤：差異分析' : '12-Lead ECG 座標考核' }}
+                    </h4>
+                    <button @click="closeECGGame" class="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-slate-100 rounded-full text-slate-500 font-bold active:scale-95">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- 遊戲主體區 (包含 SVG 人體與貼片) -->
+                <div class="flex-1 relative overflow-hidden flex justify-center items-center p-2 bg-white">
+                    <div ref="ecgContainerRef" @click="handleEcgBodyClick" class="relative w-full h-full max-w-[340px] max-h-[500px]">
+                        <!-- 人體 SVG -->
+                        <svg viewBox="0 0 100 130" class="w-full h-full pointer-events-none">
+                            <path d="M50,10 C45,10 42,13 40,16 L38,23 C25,23 12,28 7,38 L1,48 L5,62 L15,58 L15,115 L85,115 L85,58 L95,62 L99,48 C94,28 75,23 62,23 L60,16 C58,13 55,10 50,10" fill="#fdf5e6" stroke="#cbb497" stroke-width="1.2" />
+                            <path d="M38,28 Q50,34 62,28" fill="none" stroke="#d2b48c" stroke-width="1.8" opacity="0.6" />
+                            <path d="M14,48 C20,70 46,75 46,55" fill="none" stroke="#d2b48c" stroke-width="0.7" opacity="0.4" />
+                            <path d="M86,48 C80,70 54,75 54,55" fill="none" stroke="#d2b48c" stroke-width="0.7" opacity="0.4" />
+                            <!-- 乳頭 -->
+                            <circle cx="30" cy="60" r="2.2" fill="#d2b48c" opacity="0.7" />
+                            <circle cx="70" cy="60" r="2.2" fill="#d2b48c" opacity="0.7" />
+                            <!-- 中心虛線 -->
+                            <line x1="50" y1="30" x2="50" y2="115" stroke="#cbb497" stroke-width="0.5" stroke-dasharray="6,4" opacity="0.3"/>
+                        </svg>
+
+                        <!-- 放置的貼片與覆盤連線 -->
+                        <template v-for="(pos, id) in ecgState.placements" :key="id">
+                            <!-- 覆盤模式：顯示連線與目標虛線圈 -->
+                            <template v-if="ecgState.reviewMode">
+                                <svg class="absolute inset-0 w-full h-full pointer-events-none z-20">
+                                    <line :x1="pos.x + '%'" :y1="pos.y + '%'" 
+                                          :x2="ecgTargetsMap[id].x + '%'" :y2="ecgTargetsMap[id].y + '%'" 
+                                          :stroke="checkEcgPlacement(id, pos) ? '#22c55e' : '#ef4444'" 
+                                          stroke-width="1.8" stroke-dasharray="4,2" />
+                                </svg>
+                                <!-- 正確位置的虛線框 -->
+                                <div class="absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-slate-400 bg-slate-400/10 z-10" 
+                                     :style="{ left: ecgTargetsMap[id].x + '%', top: ecgTargetsMap[id].y + '%' }"></div>
+                            </template>
+
+                            <!-- 實體貼片點 -->
+                            <div class="absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-lg flex items-center justify-center text-[9px] font-black text-white border-2 border-white z-30 pointer-events-none" 
+                                 :style="{ left: pos.x + '%', top: pos.y + '%', backgroundColor: getEcgLeadColor(id) }">
+                                {{ id }}
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 底部按鈕區 -->
+                <div class="p-4 bg-white border-t shrink-0 pb-[calc(1rem+var(--safe-bottom))]">
+                    
+                    <!-- 導極選擇區 (覆盤時隱藏) -->
+                    <div v-if="!ecgState.reviewMode" class="grid grid-cols-5 gap-2 mb-4">
+                        <button v-for="lead in ['RA','LA','RL','LL','V1','V2','V3','V4','V5','V6']" :key="lead"
+                                @click="selectECGLead(lead)"
+                                :disabled="ecgState.placements[lead]"
+                                class="h-11 rounded-lg text-[13px] font-black transition-all"
+                                :class="ecgState.placements[lead] ? 'opacity-20 grayscale' : 'shadow-sm active:scale-95'"
+                                :style="{
+                                    backgroundColor: getEcgLeadColor(lead),
+                                    color: lead === 'RL' ? '#94a3b8' : '#fff',
+                                    boxShadow: ecgState.selectedLead === lead ? `0 0 15px ${getEcgLeadColor(lead)}` : '',
+                                    transform: ecgState.selectedLead === lead ? 'scale(1.1)' : '',
+                                    border: ecgState.selectedLead === lead ? '2px solid white' : 'none'
+                                }">
+                            {{ lead }}
+                        </button>
+                    </div>
+
+                    <!-- 控制按鈕 -->
+                    <div class="flex gap-2">
+                        <button @click="closeECGGame" class="flex-1 py-3.5 bg-slate-100 text-slate-500 rounded-xl font-black text-sm">
+                            {{ ecgState.reviewMode ? '完成並關閉' : '取消考核' }}
+                        </button>
+                        <button v-if="!ecgState.reviewMode" @click="submitECG" class="flex-[2] py-3.5 bg-rose-600 text-white rounded-xl font-black text-sm shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check-double"></i> 提交成績
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
         <!-- AED 模擬器全螢幕 UI (擬真版) -->
         <template v-if="isAedModalOpen">
             <header class="p-5 pb-3 flex justify-between items-start text-white bg-slate-900 z-50">
@@ -1143,7 +1283,141 @@
             const isGameModalOpen = ref(false);
             const activeGameStep = ref(null);
             const stepTimers = ref({});
+// --- 12 導程 ECG 模擬器邏輯 (專業擬真版) ---
+            const isEcgModalOpen = ref(false);
+            const activeEcgStep = ref(null);
+            const ecgContainerRef = ref(null); // 用於獲取點擊座標
 
+            // 目標標準座標
+            const ecgTargetsMap = {
+                'V1': {x: 44, y: 45},  'V2': {x: 56, y: 45}, 
+                'V3': {x: 61, y: 52},  'V4': {x: 69, y: 56}, 
+                'V5': {x: 77, y: 56},  'V6': {x: 86, y: 54},
+                'RA': {x: 12, y: 32},  'LA': {x: 88, y: 32},
+                'RL': {x: 18, y: 100}, 'LL': {x: 82, y: 100}
+            };
+
+            const ecgState = ref({
+                selectedLead: null,
+                placements: {}, // 紀錄使用者放置的座標
+                reviewMode: false,
+                score: 0,
+                isPass: false
+            });
+
+            // 取得各導極標準顏色
+            const getEcgLeadColor = (id) => {
+                const colors = { 
+                    RA: '#ef4444', LA: '#eab308', RL: '#1f2937', LL: '#22c55e', 
+                    V1: '#ef4444', V2: '#eab308', V3: '#22c55e', V4: '#6366f1', V5: '#f97316', V6: '#a855f7' 
+                };
+                return colors[id] || '#94a3b8';
+            };
+
+            // 啟動遊戲
+            const startEcgGame = (step) => {
+                activeEcgStep.value = step;
+                ecgState.value = {
+                    selectedLead: null,
+                    placements: {},
+                    reviewMode: false,
+                    score: 0,
+                    isPass: false
+                };
+                isEcgModalOpen.value = true;
+            };
+
+            // 關閉遊戲
+            const closeECGGame = () => {
+                isEcgModalOpen.value = false;
+            };
+
+            // 點擊下方按鈕選擇導極
+            const selectECGLead = (id) => {
+                if(ecgState.value.placements[id]) {
+                    // 若已放置，點擊則收回
+                    delete ecgState.value.placements[id];
+                } else {
+                    ecgState.value.selectedLead = id;
+                }
+            };
+
+            // 點擊人體放置貼片
+            const handleEcgBodyClick = (e) => {
+                if (ecgState.value.reviewMode) return;
+                if (!ecgState.value.selectedLead) {
+                    showToast("請先從下方選擇要黏貼的導極", "warning");
+                    return;
+                }
+                if (!ecgContainerRef.value) return;
+                
+                const rect = ecgContainerRef.value.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                
+                ecgState.value.placements[ecgState.value.selectedLead] = { x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)) };
+                ecgState.value.selectedLead = null; // 放置後取消選取
+            };
+
+            // 判斷座標是否正確的核心邏輯
+            const checkEcgPlacement = (id, pos) => {
+                if (!pos) return false;
+                if (['RA','LA','RL','LL'].includes(id)) {
+                    // 肢體導極看象限
+                    if (id === 'RA') return (pos.x < 50 && pos.y < 60);
+                    if (id === 'LA') return (pos.x >= 50 && pos.y < 60);
+                    if (id === 'RL') return (pos.x < 50 && pos.y >= 60);
+                    if (id === 'LL') return (pos.x >= 50 && pos.y >= 60);
+                } else {
+                    // 胸前導極看距離
+                    const tar = ecgTargetsMap[id];
+                    const dist = Math.sqrt(Math.pow(pos.x - tar.x, 2) + Math.pow(pos.y - tar.y, 2));
+                    return dist <= 8.5; // 容錯半徑
+                }
+                return false;
+            };
+
+            // 提交並進入覆盤模式
+            const submitECG = () => {
+                const placedIds = Object.keys(ecgState.value.placements);
+                if (placedIds.length < 10) {
+                    showToast("尚未貼完 10 個導極，無法提交", "warning");
+                    return;
+                }
+
+                let correctCount = 0;
+                let wrongLeads = []; // 新增：用來記錄錯了哪些導程
+                const leadsOrder = ['RA','LA','RL','LL','V1','V2','V3','V4','V5','V6'];
+                
+                leadsOrder.forEach(id => {
+                    if (checkEcgPlacement(id, ecgState.value.placements[id])) {
+                        correctCount++;
+                    } else {
+                        wrongLeads.push(id); // 如果放錯了，就把名字加進清單
+                    }
+                });
+
+                ecgState.value.score = Math.round((correctCount / 10) * 100);
+                ecgState.value.isPass = (ecgState.value.score >= 95); // 需全對
+                ecgState.value.reviewMode = true; // 進入覆盤
+
+                // 將成績與詳細資訊寫回 Vue 的主考核狀態中
+                const gIdx = activeEcgStep.value.globalIdx;
+                gradingState.value[gIdx].pass = ecgState.value.isPass;
+                gradingState.value[gIdx].timeUsed = 0; // 此模式無計時
+                
+                // ★ 新增：把分數和錯誤名單存入 state 供外部 UI 讀取
+                gradingState.value[gIdx].ecgDetails = {
+                    score: ecgState.value.score,
+                    wrongLeads: wrongLeads
+                };
+
+                if (ecgState.value.isPass) {
+                    showToast("考核通過！完美放置", "success");
+                } else {
+                    showToast(`正確: ${correctCount}/10，請查看覆盤標示`, "warning");
+                }
+            };
 // --- AED 模擬器邏輯 (Practi-TRAINER 擬真版) ---
             const isAedModalOpen = ref(false);
             const activeAedStep = ref(null);
@@ -1762,13 +2036,12 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
                 } else showToast("請先點擊開始計時", "warning");
             };
             const stopGame = (gIdx) => { const s = gameState.value[gIdx]; if(s) { clearInterval(s.interval); s.active = false; s.isRunning = false; } isGameModalOpen.value = false; };
-
-            const handleSubModalClose = () => { 
-                Object.keys(gameState.value).forEach(idx => stopGame(idx)); 
-                Object.keys(stepTimers.value).forEach(idx => clearInterval(stepTimers.value[idx]));
-                stepTimers.value = {}; activeSubModal.value = null; stopBvmGame();
-            };
-
+const handleSubModalClose = () => { 
+    Object.keys(gameState.value).forEach(idx => stopGame(idx)); 
+    Object.keys(stepTimers.value).forEach(idx => clearInterval(stepTimers.value[idx]));
+    stepTimers.value = {}; activeSubModal.value = null; stopBvmGame();
+    closeECGGame(); // 👈 改成新的名字
+};
             const submitGrade = async () => {
                 if(!activeItem.value || isSubmitting.value) return; isSubmitting.value = true;
                 const score = liveScore.value, status = score >= 95 ? 'Pass' : 'Fail';
@@ -1861,7 +2134,7 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
                 centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
     openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
-startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,
+startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,isEcgModalOpen, activeEcgStep, ecgState, ecgContainerRef, ecgTargetsMap, getEcgLeadColor, startEcgGame, closeECGGame, selectECGLead, handleEcgBodyClick, checkEcgPlacement, submitECG,
                 stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
                 activeHistoryData, showBvmHistory
