@@ -2516,7 +2516,7 @@ const handleSubModalClose = () => {
             const saveItem = async () => {
                 const f = editForm.value; const c = isNewCategory.value ? newCategoryName.value.trim() : f.category; if(!c || !f.name) return showToast("填寫資訊", "warning");
                 isEditorSaving.value = true; const nId = `${c}_${f.name}`;
-                const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2 })));
+       const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100 })));
                 try {
                     const batch = writeBatch(db); if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
                     let cw = f.catOrderWeight; const ex = displayCategories.value.find(cat => cat.name === c);
