@@ -411,7 +411,8 @@
             <div class="grid grid-cols-2 gap-3">
                 <button @click="createNewItem" class="py-4 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> 新增考核</button>
                 <button @click="openGalleryManager" class="py-4 rounded-2xl bg-emerald-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-images"></i> 抽卡圖庫</button>
-                <button @click="openGeofenceSettings" class="col-span-2 py-4 rounded-2xl bg-rose-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-location-dot"></i> 電子圍籬</button>
+                <button @click="openGeofenceSettings" class="py-4 rounded-2xl bg-rose-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-location-dot"></i> 電子圍籬</button>
+                <button @click="openTriageManager" class="py-4 rounded-2xl bg-purple-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-truck-medical"></i> 檢傷題庫</button>
             </div>
             
             <div v-for="(cat, catIdx) in editorCategories" :key="'edit-cat-'+cat.id" class="space-y-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
@@ -481,7 +482,7 @@
     <option value="timer">⏱️ 高精度計時考核</option>
     <option value="bvm">🌬️ BVM 吹氣速率挑戰</option>
     <option value="aed">🧰 AED 模擬操作挑戰</option>
-    <!-- 👇 新增這行：12導程選項 👇 -->
+     <option value="triage">🚑 檢傷分類挑戰</option>
     <option value="ecg12">⚡ 12導程貼片放置挑戰</option>
 </select>
 </div>
@@ -535,7 +536,22 @@
                                     </div>
                                 </div>
                             </div>
-
+<div v-if="step.mode === 'triage'" class="space-y-3 pt-2 border-t border-purple-100/50">
+        <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-purple-600">抽取題數</label>
+                <input type="number" v-model.number="step.triagePick" class="w-full bg-white border border-purple-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-purple-700" placeholder="例如: 30">
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-purple-600">總限時 (秒)</label>
+                <input type="number" v-model.number="step.triageTimer" class="w-full bg-white border border-purple-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-purple-700" placeholder="例如: 120">
+            </div>
+        </div>
+        <div class="space-y-1">
+            <label class="text-[10px] font-black text-purple-600">及格正確率 (%)</label>
+            <input type="number" v-model.number="step.triagePassRate" class="w-full bg-white border border-purple-200 rounded-lg px-3 py-2 text-sm font-num outline-none text-purple-700" placeholder="預設 100">
+        </div>
+    </div>
                             <div v-if="step.mode === 'none'" class="pl-8 space-y-2">
                                 <div v-if="step.images && step.images.length > 0" class="flex flex-wrap gap-2">
                                     <div v-for="(imgUrl, imgIdx) in step.images" :key="imgIdx" class="relative flex flex-col items-center gap-1">
@@ -562,7 +578,7 @@
         </div>
 
         <div v-if="editorMode === 'gallery'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
-            <div class="p-4 bg-white border-b flex flex-col gap-3">
+            <div class="p-4 bg-white border-b flex flex-col gap-3 shrink-0">
                 <div class="flex justify-between items-center">
                     <h3 class="font-black text-slate-800"><i class="fa-solid fa-images text-emerald-500 mr-2"></i>抽卡圖庫管理</h3>
                 </div>
@@ -578,24 +594,35 @@
                         <input type="file" multiple accept="image/*" class="hidden" @change="e => uploadToCentralGallery(e.target.files)">
                     </label>
                 </div>
+                <!-- 新增：等級篩選標籤 -->
+                <div class="flex gap-2 overflow-x-auto pb-1 mt-1" style="scrollbar-width: none;">
+                    <button @click="setGalleryFilter('')" class="px-4 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="!galleryDifficultyFilter ? 'bg-slate-800 text-white border-slate-800 shadow-sm' : 'bg-white text-slate-500 border-slate-200'">全部</button>
+                    <button @click="setGalleryFilter('S+')" class="px-4 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="galleryDifficultyFilter === 'S+' ? 'bg-rose-500 text-white border-rose-500 shadow-sm' : 'bg-white text-rose-500 border-rose-200'">S+ 級</button>
+                    <button @click="setGalleryFilter('S')" class="px-4 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="galleryDifficultyFilter === 'S' ? 'bg-amber-500 text-white border-amber-500 shadow-sm' : 'bg-white text-amber-500 border-amber-200'">S 級</button>
+                    <button @click="setGalleryFilter('A')" class="px-4 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="galleryDifficultyFilter === 'A' ? 'bg-blue-500 text-white border-blue-500 shadow-sm' : 'bg-white text-blue-500 border-blue-200'">A 級</button>
+                    <button @click="setGalleryFilter('B')" class="px-4 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="galleryDifficultyFilter === 'B' ? 'bg-slate-500 text-white border-slate-500 shadow-sm' : 'bg-white text-slate-500 border-slate-200'">B 級</button>
+                </div>
             </div>
-            <div class="flex-1 overflow-y-auto p-4">
+            
+            <div class="flex-1 overflow-y-auto p-4 relative">
+                <div class="text-[10px] font-black text-slate-400 mb-2">共 {{ filteredCentralGallery.length }} 張</div>
                 <div class="grid grid-cols-3 gap-3">
-                    <div v-for="(img, idx) in centralGallery" :key="idx" class="relative group aspect-square">
+                    <div v-for="(img, idx) in filteredCentralGallery" :key="img.id || idx" class="relative group aspect-square">
                         <img :src="img.url" class="w-full h-full object-cover rounded-xl border-2 border-white shadow-sm">
                         <div class="absolute top-1 left-1 px-1.5 py-0.5 rounded-lg bg-black/60 text-white text-[9px] font-black backdrop-blur-sm" :class="getDifficultyColor(img.difficulty)">{{ img.difficulty }}</div>
                         <button @click="deleteFromCentralGallery(img)" class="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-xs shadow-md"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
-                <div v-if="centralGallery.length === 0" class="flex flex-col items-center justify-center py-20 text-slate-400">
+                <div v-if="filteredCentralGallery.length === 0" class="flex flex-col items-center justify-center py-20 text-slate-400">
                     <i class="fa-solid fa-folder-open text-4xl mb-2"></i>
-                    <p class="text-xs font-bold">目前資料庫沒有記錄，請點擊上方匯入</p>
+                    <p class="text-xs font-bold">此分類目前沒有圖片</p>
                 </div>
             </div>
-            <div class="p-4 bg-white border-t">
+            <div class="p-4 bg-white border-t shrink-0">
                 <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm">完成並返回</button>
             </div>
         </div>
+           
 
        <div v-if="editorMode === 'geofence'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
             <div class="p-4 bg-white border-b space-y-3">
@@ -661,7 +688,74 @@
                 </button>
             </div>
         </div>
+
+<!-- 檢傷題庫管理介面 -->
+        <div v-if="editorMode === 'triage'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
+            <div class="p-4 bg-white border-b space-y-3 shrink-0">
+                <h3 class="font-black text-slate-800"><i class="fa-solid fa-truck-medical text-purple-600 mr-2"></i>檢傷分類題庫管理</h3>
+                
+                <!-- 新增與修改表單 -->
+                <div class="bg-slate-50 p-3 rounded-xl border space-y-2 transition-colors duration-300" :class="{'border-purple-300 bg-purple-50': editingTriageId}">
+                    <div v-if="editingTriageId" class="text-[10px] font-black text-purple-600 mb-1"><i class="fa-solid fa-pen mr-1"></i>正在修改題目...</div>
+                    <textarea v-model="newTriageQuestion.text" placeholder="輸入檢傷情境文字..." class="w-full bg-white border rounded-lg px-3 py-2 text-sm font-bold outline-none h-20 shadow-sm"></textarea>
+                    <div class="flex gap-2">
+                        <select v-model="newTriageQuestion.answer" class="bg-white border rounded-lg px-3 py-2 text-sm font-black outline-none flex-1 shadow-sm">
+                            <option value="" disabled>選擇正確燈號...</option>
+                            <option value="GREEN">🟢 綠 (輕傷)</option>
+                            <option value="YELLOW">🟡 黃 (中度)</option>
+                            <option value="RED">🔴 紅 (重傷)</option>
+                            <option value="BLACK">⚫ 黑 (死亡/無效)</option>
+                        </select>
+                        <button v-if="editingTriageId" @click="cancelTriageEdit" class="bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-black text-sm active:scale-95 shrink-0 shadow-sm">取消</button>
+                        <button @click="saveTriageQuestion" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-black text-sm active:scale-95 shrink-0 shadow-sm">
+                            {{ editingTriageId ? '儲存修改' : '新增題目' }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 搜尋與篩選列 -->
+                <div class="space-y-3">
+                    <div class="relative">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input v-model="triageSearchQuery" type="text" placeholder="搜尋題目關鍵字..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm font-bold outline-none shadow-sm">
+                    </div>
+                    <!-- 顏色篩選標籤 (可左右滑動) -->
+                    <div class="flex gap-2 overflow-x-auto pb-1" style="scrollbar-width: none;">
+                        <button @click="setTriageFilter('')" class="px-3 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="!triageColorFilter ? 'bg-slate-600 text-white border-slate-600 shadow-sm' : 'bg-white text-slate-500 border-slate-200'">全部</button>
+                        <button @click="setTriageFilter('GREEN')" class="px-3 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="triageColorFilter === 'GREEN' ? 'bg-green-500 text-white border-green-500 shadow-sm' : 'bg-white text-green-600 border-green-200'">🟢 綠</button>
+                        <button @click="setTriageFilter('YELLOW')" class="px-3 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="triageColorFilter === 'YELLOW' ? 'bg-yellow-400 text-yellow-900 border-yellow-400 shadow-sm' : 'bg-white text-yellow-600 border-yellow-200'">🟡 黃</button>
+                        <button @click="setTriageFilter('RED')" class="px-3 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="triageColorFilter === 'RED' ? 'bg-red-500 text-white border-red-500 shadow-sm' : 'bg-white text-red-600 border-red-200'">🔴 紅</button>
+                        <button @click="setTriageFilter('BLACK')" class="px-3 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="triageColorFilter === 'BLACK' ? 'bg-slate-800 text-white border-slate-800 shadow-sm' : 'bg-white text-slate-600 border-slate-300'">⚫ 黑</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 題目列表 -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-2 relative">
+                <div class="text-[10px] font-black text-slate-400 mb-2 flex justify-between">
+                    <span>共 {{ filteredTriageBank.length }} 題</span>
+                </div>
+                <div v-for="(q, idx) in filteredTriageBank" :key="q.id" class="p-3 bg-white border rounded-xl flex justify-between items-start gap-3 shadow-sm transition-all" :class="{'border-purple-300 ring-2 ring-purple-100': editingTriageId === q.id}">
+                    <div class="flex-1">
+                        <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black text-white mb-1 shadow-sm" 
+                              :class="{ 'bg-green-500': q.answer === 'GREEN', 'bg-yellow-400 text-yellow-900': q.answer === 'YELLOW', 'bg-red-500': q.answer === 'RED', 'bg-slate-900': q.answer === 'BLACK' }">
+                            {{ getTriageColorName(q.answer) }}
+                        </span>
+                        <p class="text-[13px] font-bold text-slate-700 leading-snug">{{ q.text }}</p>
+                    </div>
+                    <div class="flex gap-1.5 shrink-0">
+                        <button @click="editTriageQuestion(q)" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center active:scale-90 border border-blue-100"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button @click="deleteTriageQuestion(q.id)" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center active:scale-90 border border-rose-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                    </div>
+                </div>
+                <div v-if="filteredTriageBank.length === 0" class="text-center py-10 text-slate-400 font-bold text-sm">找不到符合的檢傷題目</div>
+            </div>
+            <div class="p-4 bg-white border-t shrink-0">
+                <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm shadow-md">完成並返回</button>
+            </div>
+        </div>
 </div>
+
 
     <!-- 審核制教官登入 -->
     <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="loginStatus === 'idle' ? isLoginModalOpen = false : null">
@@ -849,7 +943,44 @@
         </div>
     </div>
 </div>
-       
+ 
+<!-- 檢傷分類挑戰入口 UI -->
+<div v-if="step.mode === 'triage'" class="mt-4 p-4 rounded-2xl bg-purple-50 border border-purple-100 text-center relative overflow-hidden">
+    <div class="relative z-10">
+        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-sm text-purple-600">
+            <i class="fa-solid fa-truck-medical text-xl"></i>
+        </div>
+        <div class="mb-4">
+            <h4 class="font-black text-purple-700">大量傷患檢傷分類</h4>
+            <p class="text-[10px] font-bold text-slate-500 mt-1">限時 {{ step.triageTimer || 60 }} 秒，完成 {{ step.triagePick || 10 }} 題檢傷判定</p>
+        </div>
+        <button @click="startTriageGame(step)" class="w-full bg-purple-600 text-white py-3.5 rounded-xl font-black text-[13px] shadow-lg active:scale-95 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-play"></i> 開啟檢傷模擬器
+        </button>
+
+        <!-- 成績顯示 -->
+        <div v-if="gradingState[step.globalIdx]?.pass !== null" class="mt-4 text-left">
+            <div v-if="gradingState[step.globalIdx].pass" class="p-3 bg-emerald-100 rounded-xl border border-emerald-200">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black text-emerald-700"><i class="fa-solid fa-circle-check mr-1"></i> 檢傷合格</span>
+                    <span class="text-lg font-black text-emerald-700">{{ gradingState[step.globalIdx].triageDetails?.accuracy || 0 }}%</span>
+                </div>
+                <p class="text-[10px] font-bold text-emerald-600">正確率達標，耗時 {{ gradingState[step.globalIdx].timeUsed?.toFixed(1) }} 秒</p>
+            </div>
+            <div v-else class="p-3 bg-rose-100 rounded-xl border border-rose-200">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-black text-rose-700"><i class="fa-solid fa-circle-xmark mr-1"></i> 檢傷未達標</span>
+                    <span class="text-lg font-black text-rose-700">{{ gradingState[step.globalIdx].triageDetails?.accuracy || 0 }}%</span>
+                </div>
+                <p class="text-[10px] font-bold text-rose-600 leading-snug">
+                    <span v-if="gradingState[step.globalIdx].triageDetails?.isTimeout">已超時。</span>
+                    錯了 {{ gradingState[step.globalIdx].triageDetails?.wrongCount || 0 }} 題
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+      
                             <!-- 抽卡遊戲入口 UI -->
                             <div v-if="step.mode === 'game'" class="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-center">
                                 <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm text-indigo-500"><i class="fa-solid fa-layer-group text-2xl"></i></div>
@@ -927,8 +1058,7 @@
     </div>
 
     <!-- 遊戲挑戰全螢幕 (整合抽卡與 BVM) -->
-    <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen || isBvmModalOpen || isAedModalOpen || isEcgModalOpen }">
-
+ <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen || isBvmModalOpen || isAedModalOpen || isEcgModalOpen || isTriageModalOpen }">
     <!-- 在 AED 區塊的下方，或者 Game 區塊的下方，加入這整段 template -->
     
    <!-- 12 導程心電圖遊戲 UI (專業擬真全螢幕版) -->
@@ -1020,6 +1150,86 @@
             </footer>
         </div>
     </template>
+<!-- 檢傷分類全螢幕遊戲 UI -->
+        <template v-if="isTriageModalOpen">
+            <!-- 半透明黑底背景 (仿原圖風格) -->
+            <div class="flex-1 flex flex-col w-full h-full bg-black/60 relative z-[2000] p-4 flex items-center justify-center">
+                <!-- 遊戲主體白色卡片 -->
+                <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col relative animate-fade-in">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center p-4 border-b">
+                        <h3 class="text-lg font-black text-slate-800">檢傷分類訓練</h3>
+                        <button @click="closeTriageGame" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 active:scale-95"><i class="fa-solid fa-xmark text-sm"></i></button>
+                    </div>
+
+                    <!-- 遊戲進行中 -->
+                    <div v-if="!triageState.finished" class="p-5 flex flex-col gap-6">
+                        <!-- 進度與計時器 -->
+                        <div class="flex justify-between items-end border-b-2 border-slate-100 pb-2 relative">
+                            <span class="text-[11px] font-black text-purple-600 font-num">Q {{ triageState.currentIndex + 1 }} / {{ triageState.totalQ }}</span>
+                            <span class="text-xl font-black font-num" :class="triageState.timeLeft < 10 ? 'text-rose-500 animate-pulse' : 'text-slate-700'">{{ triageState.timeLeft.toFixed(1) }}</span>
+                            <!-- 進度條 -->
+                            <div class="absolute -bottom-0.5 left-0 h-0.5 bg-purple-500 transition-all duration-300" :style="{ width: ((triageState.currentIndex / triageState.totalQ) * 100) + '%' }"></div>
+                        </div>
+
+                        <!-- 題目文字 -->
+                        <div class="min-h-[100px] flex items-center justify-center">
+                            <p class="text-[17px] font-bold text-slate-800 leading-relaxed text-center whitespace-pre-line">
+                                {{ triageState.currentQuestion?.text }}
+                            </p>
+                        </div>
+
+                        <!-- 顏色按鈕 -->
+                        <div class="grid grid-cols-2 gap-3 mt-2">
+                            <button @click="answerTriage('GREEN')" class="py-5 rounded-xl bg-[#22c55e] text-white font-black text-lg shadow-md active:scale-95 transition-transform">綠</button>
+                            <button @click="answerTriage('YELLOW')" class="py-5 rounded-xl bg-[#eab308] text-white font-black text-lg shadow-md active:scale-95 transition-transform">黃</button>
+                            <button @click="answerTriage('RED')" class="py-5 rounded-xl bg-[#ef4444] text-white font-black text-lg shadow-md active:scale-95 transition-transform">紅</button>
+                            <button @click="answerTriage('BLACK')" class="py-5 rounded-xl bg-[#0f172a] text-white font-black text-lg shadow-md active:scale-95 transition-transform">黑</button>
+                        </div>
+                    </div>
+
+                   <!-- 遊戲結算與錯題回顧 -->
+                    <div v-else class="p-5 flex flex-col items-center text-center gap-3 bg-slate-50 flex-1 overflow-hidden">
+                        <div class="flex items-center gap-4 shrink-0">
+                            <div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-sm border-2 border-white" 
+                                 :class="triageState.isPass ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'">
+                                <i :class="triageState.isPass ? 'fa-solid fa-trophy' : 'fa-solid fa-face-frown'"></i>
+                            </div>
+                            <div class="text-left">
+                                <h2 class="text-2xl font-black text-slate-800">{{ triageState.isPass ? '挑戰成功！' : '挑戰失敗' }}</h2>
+                                <p class="text-sm font-bold text-slate-500 mt-1">正確率: <span class="font-black text-slate-700 text-lg">{{ triageState.accuracy }}%</span></p>
+                                <p class="text-[11px] font-bold text-slate-400 mt-0.5">耗時 {{ triageState.timeUsed.toFixed(1) }} 秒</p>
+                            </div>
+                        </div>
+
+                        <!-- 錯題回顧區塊 -->
+                        <div v-if="triageState.wrongLogs.length > 0" class="w-full mt-2 flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-200 shadow-inner overflow-hidden">
+                            <div class="flex justify-between items-center px-4 py-3 bg-slate-100/50 border-b border-slate-100 shrink-0">
+                                <span class="text-xs font-black text-slate-600">錯題回顧 ({{ triageState.wrongLogs.length }}題)</span>
+                                <span class="text-[9px] text-slate-400 font-bold"><i class="fa-solid fa-arrow-down mr-1"></i>向下捲動</span>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-3 space-y-3">
+                                <div v-for="(log, idx) in triageState.wrongLogs" :key="idx" class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-left">
+                                    <p class="text-[13px] font-bold text-slate-700 leading-snug mb-2">{{ log.text }}</p>
+                                    <div class="flex items-center gap-2 text-[11px] font-black bg-white px-3 py-2 rounded-lg border border-slate-100">
+                                        <span class="text-slate-400">正解：</span>
+                                        <span :class="getTriageColorText(log.correct)">{{ getTriageColorName(log.correct) }}</span>
+                                        <span class="text-slate-200 mx-1">|</span>
+                                        <span class="text-slate-400">你的選擇：</span>
+                                        <span :class="getTriageColorText(log.chosen)" class="line-through">{{ getTriageColorName(log.chosen) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="submitTriageResult" class="w-full mt-2 py-4 rounded-xl font-black text-[15px] shadow-lg active:scale-95 transition-transform shrink-0"
+                                :class="triageState.isPass ? 'bg-emerald-600 text-white shadow-emerald-200' : 'bg-rose-600 text-white shadow-rose-200'">
+                            儲存成績並返回
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
         <!-- AED 模擬器全螢幕 UI (擬真版) -->
         <template v-if="isAedModalOpen">
             <header class="p-5 pb-3 flex justify-between items-start text-white bg-slate-900 z-50">
@@ -1278,10 +1488,69 @@
 
             const centralGallery = ref([]); 
             const currentUploadDifficulty = ref('S');
-            const gameState = ref({}); 
+            
+            // ★ 新增：圖庫過濾邏輯
+            const galleryDifficultyFilter = ref('');
+            const setGalleryFilter = (diff) => {
+                galleryDifficultyFilter.value = galleryDifficultyFilter.value === diff ? '' : diff;
+            };
+            const filteredCentralGallery = computed(() => {
+                if (!galleryDifficultyFilter.value) return centralGallery.value;
+                return centralGallery.value.filter(img => img.difficulty === galleryDifficultyFilter.value);
+            });
+
+            const gameState = ref({});
             const isGameModalOpen = ref(false);
             const activeGameStep = ref(null);
             const stepTimers = ref({});
+
+// --- 檢傷分類邏輯 ---
+const triageBank = ref([]);
+const newTriageQuestion = ref({ text: '', answer: '' });
+const triageSearchQuery = ref('');
+const triageColorFilter = ref(''); // ★ 新增：儲存目前選擇的顏色
+const editingTriageId = ref(null);
+
+// 點擊顏色標籤切換：點第二次同顏色就取消過濾 (變回全部)
+const setTriageFilter = (color) => {
+    triageColorFilter.value = triageColorFilter.value === color ? '' : color;
+};
+
+const filteredTriageBank = computed(() => {
+    let result = triageBank.value;
+    
+    // 1. 先做顏色篩選
+    if (triageColorFilter.value) {
+        result = result.filter(item => item.answer === triageColorFilter.value);
+    }
+    
+    // 2. 再做文字搜尋 (可以同時符合顏色跟關鍵字)
+    if (triageSearchQuery.value) {
+        const q = triageSearchQuery.value.toLowerCase();
+        result = result.filter(item => item.text.toLowerCase().includes(q));
+    }
+    
+    return result;
+});
+
+const getTriageColorName = (code) => {
+    const map = { 'GREEN': '綠', 'YELLOW': '黃', 'RED': '紅', 'BLACK': '黑' };
+    return map[code] || '未知';
+};
+
+const getTriageColorText = (code) => {
+    const map = { 'GREEN': 'text-green-600', 'YELLOW': 'text-yellow-600', 'RED': 'text-red-600', 'BLACK': 'text-slate-800' };
+    return map[code] || 'text-slate-400';
+};
+
+const isTriageModalOpen = ref(false);
+const activeTriageStep = ref(null);
+const triageState = ref({
+    questions: [], currentIndex: 0, currentQuestion: null, totalQ: 0,
+    correctCount: 0, wrongLogs: [], timeLeft: 60, initialTime: 60, timeUsed: 0,
+    timerInterval: null, finished: false, accuracy: 0, isPass: false, isTimeout: false
+});
+
 // --- 12 導程 ECG 模擬器邏輯 (專業擬真版) ---
             const isEcgModalOpen = ref(false);
             const activeEcgStep = ref(null);
@@ -1702,7 +1971,88 @@
                 showToast("AED 挑戰完成", "success");
             };
 
+const startTriageGame = (step) => {
+                if (triageBank.value.length === 0) {
+                    showToast("目前題庫沒有檢傷題目，請教官先建立題庫", "warning"); return;
+                }
+                activeTriageStep.value = step;
+                const pickCount = step.triagePick || 10;
+                const timeLimit = step.triageTimer || 60;
+                
+                // 隨機抽題 (如果庫存不夠就取全部)
+                let pool = [...triageBank.value].sort(() => 0.5 - Math.random());
+                const selectedQuestions = pool.slice(0, pickCount);
 
+                triageState.value = {
+                    questions: selectedQuestions, currentIndex: 0, currentQuestion: selectedQuestions[0],
+                    totalQ: selectedQuestions.length, correctCount: 0, wrongLogs: [],
+                    timeLeft: timeLimit, initialTime: timeLimit, timeUsed: 0,
+                    timerInterval: null, finished: false, accuracy: 0, isPass: false, isTimeout: false
+                };
+
+                isTriageModalOpen.value = true;
+
+                // 啟動倒數計時
+                const startTime = Date.now();
+                triageState.value.timerInterval = setInterval(() => {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    triageState.value.timeLeft = Math.max(0, timeLimit - elapsed);
+                    if (triageState.value.timeLeft <= 0) {
+                        endTriageGame(true); // 超時強制結束
+                    }
+                }, 100);
+            };
+
+            const answerTriage = (selectedColor) => {
+                const currentQ = triageState.value.currentQuestion;
+                if (currentQ.answer === selectedColor) {
+                    triageState.value.correctCount++;
+                } else {
+                    triageState.value.wrongLogs.push({
+                        text: currentQ.text, correct: currentQ.answer, chosen: selectedColor
+                    });
+                }
+
+                // 下一題
+                triageState.value.currentIndex++;
+                if (triageState.value.currentIndex >= triageState.value.totalQ) {
+                    endTriageGame(false); // 正常答完
+                } else {
+                    triageState.value.currentQuestion = triageState.value.questions[triageState.value.currentIndex];
+                }
+            };
+
+            const endTriageGame = (isTimeout) => {
+                clearInterval(triageState.value.timerInterval);
+                const st = triageState.value;
+                st.isTimeout = isTimeout;
+                st.timeUsed = st.initialTime - st.timeLeft;
+                st.accuracy = Math.round((st.correctCount / st.totalQ) * 100);
+                
+                const passRate = activeTriageStep.value.triagePassRate ?? 100; // 預設 100%
+                st.isPass = st.accuracy >= passRate && !isTimeout;
+                
+                st.finished = true;
+                if(isTimeout) showToast("時間到！", "warning");
+            };
+
+            const submitTriageResult = () => {
+                const gIdx = activeTriageStep.value.globalIdx;
+                gradingState.value[gIdx].pass = triageState.value.isPass;
+                gradingState.value[gIdx].timeUsed = triageState.value.timeUsed;
+                gradingState.value[gIdx].triageDetails = {
+                    accuracy: triageState.value.accuracy,
+                    wrongCount: triageState.value.wrongLogs.length,
+                    isTimeout: triageState.value.isTimeout
+                };
+                closeTriageGame();
+                showToast(triageState.value.isPass ? "檢傷考核通過" : "檢傷考核未通過", triageState.value.isPass ? "success" : "warning");
+            };
+
+            const closeTriageGame = () => {
+                if (triageState.value.timerInterval) clearInterval(triageState.value.timerInterval);
+                isTriageModalOpen.value = false;
+            };
 
 
             const isBvmModalOpen = ref(false);
@@ -1715,9 +2065,63 @@ const instructorsList = computed(() => usersList.value.filter(u => ['instructor'
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
             const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
 
-            const fetchData = async () => { try { const uSnap = await getDocs(collection(db, "passport_users")); usersList.value = uSnap.docs.map(d => d.data()); await fetchQuestions(true); fetchCentralGallery(); } catch(e){} };
+            const fetchData = async () => { try { const uSnap = await getDocs(collection(db, "passport_users")); usersList.value = uSnap.docs.map(d => d.data()); await fetchQuestions(true); fetchCentralGallery(); fetchTriageBank(); } catch(e){} };
             const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
             const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
+
+// --- ▼ 將這段貼在 fetchCentralGallery 的正下方 ▼ ---
+const fetchTriageBank = () => {
+    onSnapshot(collection(db, "passport_triage"), (snap) => {
+        triageBank.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    });
+};
+
+const openTriageManager = () => { editorMode.value = 'triage'; };
+
+const saveTriageQuestion = async () => {
+    if (!newTriageQuestion.value.text || !newTriageQuestion.value.answer) {
+        showToast("請輸入文字並選擇答案", "warning"); return;
+    }
+    try {
+        if (editingTriageId.value) {
+            // 修改現有題目
+            await updateDoc(doc(db, "passport_triage", editingTriageId.value), {
+                text: newTriageQuestion.value.text.trim(),
+                answer: newTriageQuestion.value.answer,
+                updatedAt: new Date().toISOString()
+            });
+            showToast("修改成功", "success");
+        } else {
+            // 新增題目
+            const docId = `T_${Date.now()}`;
+            await setDoc(doc(db, "passport_triage", docId), {
+                text: newTriageQuestion.value.text.trim(),
+                answer: newTriageQuestion.value.answer,
+                createdAt: new Date().toISOString()
+            });
+            showToast("新增題目成功", "success");
+        }
+        cancelTriageEdit(); // 清空表單
+    } catch(e) { showToast("儲存失敗", "warning"); }
+};
+
+const editTriageQuestion = (q) => {
+    editingTriageId.value = q.id;
+    newTriageQuestion.value = { text: q.text, answer: q.answer };
+};
+
+const cancelTriageEdit = () => {
+    editingTriageId.value = null;
+    newTriageQuestion.value = { text: '', answer: '' };
+};
+
+const deleteTriageQuestion = (id) => {
+    showAppConfirm('刪除題目', '確定要刪除此檢傷題目？', async () => {
+        await deleteDoc(doc(db, "passport_triage", id));
+        showToast("刪除成功", "success");
+    });
+};
+// --- ▲ 貼上到這裡結束 ▲ ---
             const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
@@ -1954,7 +2358,7 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
                             gradingState.value[idx].pass = d.pass; 
                             gradingState.value[idx].timeUsed = d.timeUsed || 0; 
                             gradingState.value[idx].bvmLogs = d.bvmLogs || []; 
-                            gradingState.value[idx].ecgDetails = d.ecgDetails || null; // <== 關鍵在這裡
+                            gradingState.value[idx].triageDetails = d.triageDetails || null; // <== 關鍵在這裡
                         } 
                     }); 
                 } catch(e){}
@@ -2097,12 +2501,12 @@ const handleSubModalClose = () => {
             };
 
             const removeStepImage = (g, sIdx, imgIdx, url) => { g.steps[sIdx].images.splice(imgIdx, 1); deleteImageFromStorage(url); sessionUploadedUrls.value = sessionUploadedUrls.value.filter(u => u !== url); };
-            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] }] }; editorMode.value = 'edit'; };
+            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2, triagePick: 10, triageTimer: 60, triagePassRate: 100 }] }] }; editorMode.value = 'edit'; };
             const editItem = (item) => {
                 sessionUploadedUrls.value = []; const grp = []; let cur = null;
                 item.steps?.forEach(s => { const n = s.subItem || item.name; if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } 
                 let mode = s.mode || 'none'; if(mode==='none' && s.isGameMode) mode = 'game'; if(mode==='none' && s.isTimerMode) mode = 'timer';
-                cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2 }); 
+                cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100 }); 
                 });
                 editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] }] };
                 editorMode.value = 'edit';
@@ -2147,11 +2551,12 @@ const handleSubModalClose = () => {
             return {
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
-                centralGallery, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
-    openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
-startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,isEcgModalOpen, activeEcgStep, ecgState, ecgContainerRef, ecgTargetsMap, getEcgLeadColor, startEcgGame, closeECGGame, selectECGLead, handleEcgBodyClick, checkEcgPlacement, submitECG,
+   centralGallery, filteredCentralGallery, galleryDifficultyFilter, setGalleryFilter, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
+                openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
+                startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,isEcgModalOpen, activeEcgStep, ecgState, ecgContainerRef, ecgTargetsMap, getEcgLeadColor, startEcgGame, closeECGGame, selectECGLead, handleEcgBodyClick, checkEcgPlacement, submitECG,
                 stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
-                isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState,
+                isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState, 
+triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager, saveTriageQuestion, deleteTriageQuestion, startTriageGame, answerTriage, submitTriageResult, closeTriageGame, triageSearchQuery, triageColorFilter, setTriageFilter, filteredTriageBank, editingTriageId, editTriageQuestion, cancelTriageEdit, getTriageColorName, getTriageColorText,
                 activeHistoryData, showBvmHistory
             };
         }
