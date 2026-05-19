@@ -1635,29 +1635,17 @@
 
     createApp({
         setup() {
+            // 加入這三行來解析網址傳過來的名字
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlStudentName = urlParams.get('student');
+            const defaultStudent = (urlStudentName && urlStudentName !== '') ? urlStudentName : '訪客';
+
             const slider = ref(null), tabsScrollRef = ref(null), activeTab = ref(0), isLoading = ref(true), isSubmitting = ref(false), isInstructorMode = ref(false), isLoginModalOpen = ref(false);
             const loginForm = ref({ name: '', password: '' }), currentInstructorName = ref(''), isEditorOpen = ref(false), editorMode = ref('list'), isEditorSaving = ref(false), isNewCategory = ref(false), newCategoryName = ref(''), sessionUploadedUrls = ref([]);
             const editForm = ref({ originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [] });
-           // 1. 先從網址擷取傳過來的名字
-const urlParams = new URLSearchParams(window.location.search);
-const urlStudentName = urlParams.get('student');
-
-// 2. 將原本的宣告拆開，並把 selectedStudent 的預設值改為網址抓到的名字 (如果沒有就維持訪客)
-const iconList = computed(() => ALL_ICONS.slice(0, 18));
-const isMainModalOpen = ref(false);
-const activeSubModal = ref(null);
-const selectedStudent = ref(urlStudentName || '訪客'); // <--- 關鍵修改在這裡
-const usersList = ref([]);
-const rawQuestions = ref([]);
-const studentRecords = ref([]);
-const editorCategories = ref([]);
-const activeItem = ref(null);
-const itemSections = ref([]);
-const gradingState = ref([]);
-const evalRemarks = ref('');
-const showEquipment = ref(false);
-const toast = ref({ show: false, msg: '', icon: '', color: '' });
-const appConfirm = ref({ show: false, title: '', msg: '', onConfirm: null });
+            
+            // 注意這裡把 '訪客' 換成了 defaultStudent
+            const iconList = computed(() => ALL_ICONS.slice(0, 18)), isMainModalOpen = ref(false), activeSubModal = ref(null), selectedStudent = ref(defaultStudent), usersList = ref([]), rawQuestions = ref([]), studentRecords = ref([]), editorCategories = ref([]), activeItem = ref(null), itemSections = ref([]), gradingState = ref([]), evalRemarks = ref(''), showEquipment = ref(false), toast = ref({ show: false, msg: '', icon: '', color: '' }), appConfirm = ref({ show: false, title: '', msg: '', onConfirm: null });
 
             const centralGallery = ref([]); 
             const currentUploadDifficulty = ref('S');
