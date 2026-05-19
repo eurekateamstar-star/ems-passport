@@ -278,36 +278,61 @@
         </div>
     </div>
 
-    <!-- Header -->
-    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-end items-center bg-[#f1f5f9] shrink-0 z-50 min-h-[3rem]">
-        <div class="flex items-center gap-3">
-            <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl"><i class="fa-solid fa-circle-notch"></i></div>
+   <!-- 頂部身分與學員切換區 (合併 Header，完美對齊最上方且還原主系統風格) -->
+    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="px-6 shrink-0 z-50 bg-[#f1f5f9] pb-4 flex items-center justify-between">
+        
+        <!-- 左側：頭像與文字資訊 (永遠代表被考核的學員) -->
+        <div class="flex items-center gap-3 relative flex-1">
+            
+            <!-- 透明的 Select 覆蓋在整個左側，保留原有的點擊切換功能 -->
+            <select v-model="selectedStudent" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 appearance-none">
+                <option v-for="user in studentsList" :key="user.name" :value="user.name">{{ user.name }}</option>
+            </select>
+
+            <!-- 1. 正圓形白底大頭貼 (藍色文字) -->
+            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-blue-600 text-lg font-black shadow-sm border border-slate-200 shrink-0">
+                {{ selectedStudent ? selectedStudent.charAt(0) : '?' }}
+            </div>
+
+           <!-- 2. 文字與標籤區塊 -->
+            <div>
+                <!-- WELCOME BACK 小字 -->
+                <p class="text-[10px] text-slate-400 font-bold tracking-wider uppercase mb-0.5">Welcome Back</p>
+                
+                <!-- 名字與身分標籤 -->
+                <h2 class="text-lg font-black text-slate-800">
+                    {{ selectedStudent }}
+                    
+                    <!-- 身分小標籤 (永遠固定為藍色學員) -->
+                    <span class="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-1 align-middle font-bold">學員</span>
+                    
+                    <!-- 下拉小箭頭 -->
+                    <i class="fa-solid fa-caret-down text-slate-300 text-[10px] ml-1 align-middle"></i>
+                </h2>
+            </div>
+        </div>
+
+        <!-- 右側：教官資訊與進度百分比 -->
+        <div class="text-right shrink-0 pl-4 flex flex-col items-end relative z-0">
+            
+            <!-- 登入教官模式時，在這裡顯示教官名字 (高度剛好對齊左邊的 Welcome Back) -->
+            <div class="h-[14px] mb-1 flex items-center">
+                <span v-if="isInstructorMode" class="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full flex items-center gap-1 font-black shadow-sm">
+                    <i class="fa-solid fa-user-tie text-[8px]"></i>教官: {{ currentInstructorName }}
+                </span>
+            </div>
+           <!-- 讀取中圈圈與考核進度數量 -->
+            <div class="flex items-center gap-2">
+                <div v-if="isLoading" class="text-emerald-500 animate-spin text-lg"><i class="fa-solid fa-circle-notch"></i></div>
+                <div class="flex items-baseline font-num drop-shadow-sm">
+                    <span class="text-[30px] font-black text-emerald-500 leading-none tracking-tighter">{{ totalCompletedCount }}</span>
+                    <span class="text-lg font-bold text-emerald-300 mx-0.5">/</span>
+                    <span class="text-xl font-black text-emerald-600 leading-none">{{ totalItemsCount }}</span>
+                </div>
+            </div>
         </div>
     </header>
-
-    <!-- 學員切換區 -->
-    <div class="px-5 shrink-0 z-40 bg-[#f1f5f9] pb-4 pt-2">
-        <div class="list-card p-4 shadow-sm flex items-center justify-between">
-            <div class="flex flex-col flex-1 mr-4">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-slate-400 text-[10px] font-black uppercase">切換學員 (Student)</span>
-                    <span v-if="isInstructorMode" class="px-2 py-0.5 rounded bg-yellow-400 text-yellow-900 text-[10px] font-black">教官: {{ currentInstructorName }}</span>
-                    <span v-else class="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-black">學員模式</span>
-                </div>
-                <div class="relative mt-0.5">
-                    <select v-model="selectedStudent" class="w-full bg-transparent text-lg font-black text-slate-800 outline-none appearance-none cursor-pointer">
-                        <option v-for="user in studentsList" :key="user.name" :value="user.name">{{ user.name }}</option>
-                    </select>
-                    <i class="fa-solid fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
-                </div>
-            </div>
-            <div class="text-right shrink-0">
-                <span class="block text-3xl font-black text-emerald-500 font-num leading-none">{{ totalProgress }}<span class="text-sm">%</span></span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 橫向 Tabs -->
+ <!-- 橫向 Tabs (補回這段) -->
     <div class="tabs-section">
         <div class="tabs-scroll-container" ref="tabsScrollRef">
             <div class="tab-item" @click="scrollToTab(0)">
@@ -2595,7 +2620,8 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
             const updateEditorCategories = () => { editorCategories.value = JSON.parse(JSON.stringify(displayCategories.value)); };
             const existingCategories = computed(() => displayCategories.value.map(c => c.name));
             const totalProgress = computed(() => { let c = displayCategories.value.reduce((s, a) => s + a.completed, 0), t = displayCategories.value.reduce((s, a) => s + a.total, 0); return t ? Math.round((c/t)*100) : 0; });
-
+            const totalCompletedCount = computed(() => displayCategories.value.reduce((s, a) => s + a.completed, 0));
+const totalItemsCount = computed(() => displayCategories.value.reduce((s, a) => s + a.total, 0));
             const scrollToTab = (i) => { slider.value?.scrollTo({ left: slider.value.clientWidth * i, behavior: "smooth" }); activeTab.value = i; };
             const onSliderScroll = () => { if(!slider.value) return; const i = Math.round(slider.value.scrollLeft / slider.value.clientWidth); if(i !== activeTab.value) activeTab.value = i; };
 
@@ -2821,7 +2847,7 @@ const handleSubModalClose = () => {
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
             return {
-                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
+                isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, totalCompletedCount, totalItemsCount, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
    centralGallery, filteredCentralGallery, galleryDifficultyFilter, setGalleryFilter, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
                 openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
