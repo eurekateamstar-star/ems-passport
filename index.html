@@ -279,13 +279,9 @@
     </div>
 
     <!-- Header -->
-    <!-- Header -->
-    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-end items-center bg-[#f1f5f9] shrink-0 z-50">
+    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-end items-center bg-[#f1f5f9] shrink-0 z-50 min-h-[3rem]">
         <div class="flex items-center gap-3">
             <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl"><i class="fa-solid fa-circle-notch"></i></div>
-            <button v-if="isInstructorMode" @click="openEditorList" class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white shadow-md active:scale-95 transition-transform">
-                <i class="fa-solid fa-pen-to-square text-sm"></i>
-            </button>
         </div>
     </header>
 
@@ -389,8 +385,14 @@
         </div>
     </div>
 
-    <!-- 右下角教官按鈕 -->
-    <div class="absolute bottom-6 right-6 z-40">
+    <!-- 右下角教官按鈕群 -->
+    <div class="absolute bottom-6 right-6 z-40 flex flex-col items-center gap-3">
+        <!-- 題庫編輯按鈕 (僅教官模式出現) -->
+        <button v-if="isInstructorMode" @click="openEditorList" class="w-12 h-12 rounded-full bg-slate-800 text-white shadow-xl flex items-center justify-center active:scale-90 transition-transform border border-slate-700">
+            <i class="fa-solid fa-pen-to-square text-lg"></i>
+        </button>
+
+        <!-- 鎖頭/登出按鈕 -->
         <button v-if="!isInstructorMode" @click="isLoginModalOpen = true" class="w-14 h-14 rounded-full bg-yellow-400 text-yellow-900 shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-yellow-300"><i class="fa-solid fa-lock text-xl"></i></button>
         <button v-else @click="handleLogout" class="w-14 h-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform border border-emerald-500"><i class="fa-solid fa-unlock-keyhole text-xl"></i></button>
     </div>
