@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
+[v-cloak] { display: none !important; }
         :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); --header-bg: #f1f5f9; }
         html, body { margin: 0; padding: 0; background: var(--header-bg); color: #1e293b; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif; height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
         #app { width:100%; height:100dvh; max-width:450px; margin:0 auto; display:flex; flex-direction:column; position:relative; background:#f1f5f9; box-shadow:0 0 50px rgba(0,0,0,.08); }
@@ -251,7 +252,7 @@
 <body>
 
 <div id="app">
-
+<div id="app" v-cloak>
     <!-- 全域 Toast -->
     <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300"
          :class="toast.show ? 'translate-y-0 opacity-100' : '-translate-y-10 opacity-0 pointer-events-none'">
@@ -278,11 +279,8 @@
     </div>
 
     <!-- Header -->
-    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-between items-center bg-[#f1f5f9] shrink-0 z-50">
-        <div>
-            <p class="text-[10px] text-emerald-600 font-black tracking-widest uppercase mb-0.5">EMS Passport</p>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight">海山救護</h1>
-        </div>
+    <!-- Header -->
+    <header :style="{ paddingTop:'calc(1rem + var(--safe-top))' }" class="pb-2 px-6 flex justify-end items-center bg-[#f1f5f9] shrink-0 z-50">
         <div class="flex items-center gap-3">
             <div v-if="isLoading" class="text-emerald-500 animate-spin text-xl"><i class="fa-solid fa-circle-notch"></i></div>
             <button v-if="isInstructorMode" @click="openEditorList" class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white shadow-md active:scale-95 transition-transform">
@@ -2542,6 +2540,30 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
             const handleItemClick = (i) => isInstructorMode.value ? openMainModal(i) : showToast("請由教官評核", "warning");
 
             const displayCategories = computed(() => {
+                // ★ 新增：如果資料庫還沒載入完成，先回傳這組「預設的九宮格版面」讓畫面秒開
+                if (rawQuestions.value.length === 0) {
+                    const defaultGrid = [
+                        { name: '基本技能', icon: 'fa-kit-medical' },
+                        { name: '呼吸道管理', icon: 'fa-lungs' },
+                        { name: '呼吸管理', icon: 'fa-mask-ventilator' },
+                        { name: '現場處置', icon: 'fa-person-falling-burst' },
+                        { name: '外科器材運用', icon: 'fa-bone' },
+                        { name: '運送患者及搬運', icon: 'fa-wheelchair' },
+                        { name: '內科器材運用', icon: 'fa-heart-pulse' },
+                        { name: '內外科流程', icon: 'fa-notes-medical' },
+                        { name: '特殊情形', icon: 'fa-triangle-exclamation' }
+                    ];
+                    return defaultGrid.map((cat, i) => {
+                        const t = colorThemes[i % colorThemes.length];
+                        return {
+                            id: cat.name, name: cat.name, icon: cat.icon, locked: false,
+                            items: [], total: 0, completed: 0, orderWeight: i * 10,
+                            activeClass: `${t.bg} text-white ${t.border}`, textColor: t.text
+                        };
+                    });
+                }
+
+                // 以下是原本的邏輯：資料載入後，依照資料庫內容計算完成度
                 const g = {};
                 rawQuestions.value.forEach(q => {
                     const c = q.category; const w = q.catOrderWeight ?? (DEFAULT_CAT_ORDER[c] ?? 999);
