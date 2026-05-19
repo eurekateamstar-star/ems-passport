@@ -251,7 +251,7 @@
 </head>
 <body>
 
-<div id="app">
+
 <div id="app" v-cloak>
     <!-- 全域 Toast -->
     <div class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300"
@@ -2582,6 +2582,19 @@ const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
             const scrollToTab = (i) => { slider.value?.scrollTo({ left: slider.value.clientWidth * i, behavior: "smooth" }); activeTab.value = i; };
             const onSliderScroll = () => { if(!slider.value) return; const i = Math.round(slider.value.scrollLeft / slider.value.clientWidth); if(i !== activeTab.value) activeTab.value = i; };
 
+            // ★ 新增這一段：監聽 activeTab 的變化，自動將上方的 Tab 捲動並置中
+            watch(activeTab, (newIndex) => {
+                if (!tabsScrollRef.value) return;
+                const container = tabsScrollRef.value;
+                const tabs = container.children; // 取得所有上方按鈕元素
+                if (tabs[newIndex]) {
+                    const tab = tabs[newIndex];
+                    // 計算要捲動的距離，讓該按鈕剛好停在畫面正中間
+                    const scrollPos = tab.offsetLeft - (container.clientWidth / 2) + (tab.clientWidth / 2);
+                    container.scrollTo({ left: scrollPos, behavior: 'smooth' });
+                }
+            });
+          
             const openMainModal = (item) => {
                 activeItem.value = item; const secMap = {}; let gIdx = 0;
                 item.steps?.forEach(s => { const t = s.subItem || item.name; if(!secMap[t]) secMap[t] = { title: t, steps: [] }; secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); });
