@@ -753,31 +753,37 @@
         </div>
 
 <!-- 檢傷題庫管理介面 -->
-        <div v-if="editorMode === 'triage'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden">
-            <div class="p-4 bg-white border-b space-y-3 shrink-0">
-                <h3 class="font-black text-slate-800"><i class="fa-solid fa-truck-medical text-purple-600 mr-2"></i>檢傷分類題庫管理</h3>
+        <div v-if="editorMode === 'triage'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
+            
+            <!-- 將整個內容區設為可滑動 -->
+            <div class="flex-1 overflow-y-auto relative flex flex-col">
                 
-                <!-- 新增與修改表單 -->
-                <div class="bg-slate-50 p-3 rounded-xl border space-y-2 transition-colors duration-300" :class="{'border-purple-300 bg-purple-50': editingTriageId}">
-                    <div v-if="editingTriageId" class="text-[10px] font-black text-purple-600 mb-1"><i class="fa-solid fa-pen mr-1"></i>正在修改題目...</div>
-                    <textarea v-model="newTriageQuestion.text" placeholder="輸入檢傷情境文字..." class="w-full bg-white border rounded-lg px-3 py-2 text-sm font-bold outline-none h-20 shadow-sm"></textarea>
-                    <div class="flex gap-2">
-                        <select v-model="newTriageQuestion.answer" class="bg-white border rounded-lg px-3 py-2 text-sm font-black outline-none flex-1 shadow-sm">
-                            <option value="" disabled>選擇正確燈號...</option>
-                            <option value="GREEN">🟢 綠 (輕傷)</option>
-                            <option value="YELLOW">🟡 黃 (中度)</option>
-                            <option value="RED">🔴 紅 (重傷)</option>
-                            <option value="BLACK">⚫ 黑 (死亡/無效)</option>
-                        </select>
-                        <button v-if="editingTriageId" @click="cancelTriageEdit" class="bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-black text-sm active:scale-95 shrink-0 shadow-sm">取消</button>
-                        <button @click="saveTriageQuestion" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-black text-sm active:scale-95 shrink-0 shadow-sm">
-                            {{ editingTriageId ? '儲存修改' : '新增題目' }}
-                        </button>
+                <!-- 標題與新增表單 (往下滑時會跟著捲動消失) -->
+                <div class="p-4 bg-white space-y-3 shrink-0">
+                    <h3 class="font-black text-slate-800"><i class="fa-solid fa-truck-medical text-purple-600 mr-2"></i>檢傷分類題庫管理</h3>
+                    
+                    <!-- 新增與修改表單 -->
+                    <div class="bg-slate-50 p-3 rounded-xl border space-y-2 transition-colors duration-300" :class="{'border-purple-300 bg-purple-50': editingTriageId}">
+                        <div v-if="editingTriageId" class="text-[10px] font-black text-purple-600 mb-1"><i class="fa-solid fa-pen mr-1"></i>正在修改題目...</div>
+                        <textarea v-model="newTriageQuestion.text" placeholder="輸入檢傷情境文字..." class="w-full bg-white border rounded-lg px-3 py-2 text-sm font-bold outline-none h-20 shadow-sm"></textarea>
+                        <div class="flex gap-2">
+                            <select v-model="newTriageQuestion.answer" class="bg-white border rounded-lg px-3 py-2 text-sm font-black outline-none flex-1 shadow-sm">
+                                <option value="" disabled>選擇正確燈號...</option>
+                                <option value="GREEN">🟢 綠 (輕傷)</option>
+                                <option value="YELLOW">🟡 黃 (中度)</option>
+                                <option value="RED">🔴 紅 (重傷)</option>
+                                <option value="BLACK">⚫ 黑 (死亡/無效)</option>
+                            </select>
+                            <button v-if="editingTriageId" @click="cancelTriageEdit" class="bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-black text-sm active:scale-95 shrink-0 shadow-sm">取消</button>
+                            <button @click="saveTriageQuestion" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-black text-sm active:scale-95 shrink-0 shadow-sm">
+                                {{ editingTriageId ? '儲存修改' : '新增題目' }}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 搜尋與篩選列 -->
-                <div class="space-y-3">
+                <!-- 搜尋與篩選列 (使用 sticky 吸頂，加上毛玻璃背景) -->
+                <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-y border-slate-200 shadow-sm space-y-3 shrink-0">
                     <div class="relative">
                         <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input v-model="triageSearchQuery" type="text" placeholder="搜尋題目關鍵字..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-sm font-bold outline-none shadow-sm">
@@ -791,29 +797,31 @@
                         <button @click="setTriageFilter('BLACK')" class="px-3 py-1.5 rounded-lg text-xs font-black shrink-0 border transition-all" :class="triageColorFilter === 'BLACK' ? 'bg-slate-800 text-white border-slate-800 shadow-sm' : 'bg-white text-slate-600 border-slate-300'">⚫ 黑</button>
                     </div>
                 </div>
-            </div>
 
-            <!-- 題目列表 -->
-            <div class="flex-1 overflow-y-auto p-4 space-y-2 relative">
-                <div class="text-[10px] font-black text-slate-400 mb-2 flex justify-between">
-                    <span>共 {{ filteredTriageBank.length }} 題</span>
-                </div>
-                <div v-for="(q, idx) in filteredTriageBank" :key="q.id" class="p-3 bg-white border rounded-xl flex justify-between items-start gap-3 shadow-sm transition-all" :class="{'border-purple-300 ring-2 ring-purple-100': editingTriageId === q.id}">
-                    <div class="flex-1">
-                        <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black text-white mb-1 shadow-sm" 
-                              :class="{ 'bg-green-500': q.answer === 'GREEN', 'bg-yellow-400 text-yellow-900': q.answer === 'YELLOW', 'bg-red-500': q.answer === 'RED', 'bg-slate-900': q.answer === 'BLACK' }">
-                            {{ getTriageColorName(q.answer) }}
-                        </span>
-                        <p class="text-[13px] font-bold text-slate-700 leading-snug">{{ q.text }}</p>
+                <!-- 題目列表 -->
+                <div class="p-4 space-y-2 pb-10">
+                    <div class="text-[10px] font-black text-slate-400 mb-2 flex justify-between">
+                        <span>共 {{ filteredTriageBank.length }} 題</span>
                     </div>
-                    <div class="flex gap-1.5 shrink-0">
-                        <button @click="editTriageQuestion(q)" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center active:scale-90 border border-blue-100"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <button @click="deleteTriageQuestion(q.id)" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center active:scale-90 border border-rose-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                    <div v-for="(q, idx) in filteredTriageBank" :key="q.id" class="p-3 bg-white border rounded-xl flex justify-between items-start gap-3 shadow-sm transition-all" :class="{'border-purple-300 ring-2 ring-purple-100': editingTriageId === q.id}">
+                        <div class="flex-1">
+                            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black text-white mb-1 shadow-sm" 
+                                  :class="{ 'bg-green-500': q.answer === 'GREEN', 'bg-yellow-400 text-yellow-900': q.answer === 'YELLOW', 'bg-red-500': q.answer === 'RED', 'bg-slate-900': q.answer === 'BLACK' }">
+                                {{ getTriageColorName(q.answer) }}
+                            </span>
+                            <p class="text-[13px] font-bold text-slate-700 leading-snug">{{ q.text }}</p>
+                        </div>
+                        <div class="flex gap-1.5 shrink-0">
+                            <button @click="editTriageQuestion(q)" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center active:scale-90 border border-blue-100"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button @click="deleteTriageQuestion(q.id)" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center active:scale-90 border border-rose-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
                     </div>
+                    <div v-if="filteredTriageBank.length === 0" class="text-center py-10 text-slate-400 font-bold text-sm">找不到符合的檢傷題目</div>
                 </div>
-                <div v-if="filteredTriageBank.length === 0" class="text-center py-10 text-slate-400 font-bold text-sm">找不到符合的檢傷題目</div>
-            </div>
-            <div class="p-4 bg-white border-t shrink-0">
+
+            </div> <!-- 結尾: flex-1 overflow-y-auto -->
+
+            <div class="p-4 bg-white border-t shrink-0 z-40 relative">
                 <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm shadow-md">完成並返回</button>
             </div>
         </div>
