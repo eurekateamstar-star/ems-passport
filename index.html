@@ -740,6 +740,13 @@
                                placeholder="預設 50">
                     </div>
                     <!-- ▲ 新增：半徑輸入框 ▲ -->
+<!-- ▼ 新增：閒置自動登出時間輸入框 ▼ -->
+<div class="space-y-1 pt-1">
+    <label class="text-[11px] font-black text-slate-500 text-indigo-600">閒置自動登出 (分鐘)</label>
+    <input v-model.number="geofenceForm.idleTimeout" type="number" step="1" min="1"
+           class="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm font-num outline-none"
+           placeholder="預設 30 分鐘">
+</div>
 
                     <button @click="useCurrentLocation" 
                             class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-black text-sm flex items-center justify-center gap-2 mt-2">
@@ -752,7 +759,8 @@
                     <div>
                         <!-- ▼ 修改文字讓它顯示目前的半徑 ▼ -->
                         <p class="text-xs font-black text-slate-600">有效半徑：{{ geofenceForm.radius || 50 }} 公尺</p>
-                        <p class="text-[10px] text-slate-400">教官需在此範圍內才可申請登入</p>
+    <p class="text-xs font-black text-slate-600 mt-0.5">閒置登出：{{ geofenceForm.idleTimeout || 30 }} 分鐘</p>
+    <p class="text-[10px] text-slate-400 mt-1">教官需在此範圍內才可申請登入，遠離或閒置將自動登出。</p>
                     </div>
                 </div>
 
@@ -2398,30 +2406,37 @@ const deleteInstructor = (id) => {
             checkGeofence();
         }
     });
-// 圍籬相關 (加上 radius: 50 預設值)
-const geofenceForm = ref({ lat: null, lng: null, radius: 50 });
+// ==========================================
+// 圍籬與自動登出相關邏輯 (取代原本的 Geofence 區塊)
+// ==========================================
+const geofenceForm = ref({ lat: null, lng: null, radius: 50, idleTimeout: 30 }); // 加入 idleTimeout
 const geofenceConfig = ref(null); 
 const userLocation = ref(null);   
 const isInGeofence = ref(true);   
 
-// 讀取圍籬設定 (加上讀取 radius)
+// 用來儲存即時追蹤與閒置計時的 ID
+const locationWatchId = ref(null);
+let idleCheckTimer = null;
+let lastActivityTimestamp = Date.now();
+
+// 讀取圍籬設定
 const fetchGeofence = async () => {
     try {
         const snap = await getDocs(collection(db, "passport_config"));
         const cfg = snap.docs.find(d => d.id === 'geofence');
         if (cfg) {
             geofenceConfig.value = cfg.data();
-            // 如果舊資料沒有 radius，預設給 50
             geofenceForm.value = { 
                 lat: cfg.data().lat, 
                 lng: cfg.data().lng, 
-                radius: cfg.data().radius || 50 
+                radius: cfg.data().radius || 50,
+                idleTimeout: cfg.data().idleTimeout || 30 // 讀取閒置設定，預設30
             };
         }
     } catch(e) {}
 };
 
-// 計算兩點距離（公尺）- 維持不變
+// 計算兩點距離（公尺）
 const calcDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -2430,23 +2445,20 @@ const calcDistance = (lat1, lng1, lat2, lng2) => {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 };
 
-// 取得使用者位置並判斷是否在圍籬內 (將 50 改成變數)
+// 取得使用者位置並判斷是否在圍籬內 (登入前檢查用)
 const checkGeofence = () => {
     if (!geofenceConfig.value?.lat) { isInGeofence.value = true; return; }
     if (!navigator.geolocation) { 
         isInGeofence.value = false; 
-        showToast("瀏覽器不支援定位", "warning");
-        return; 
+        showToast("瀏覽器不支援定位", "warning"); return; 
     }
     
-    // 取得目前設定的半徑
     const allowedRadius = geofenceConfig.value.radius || 50;
 
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             userLocation.value = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             const dist = calcDistance(pos.coords.latitude, pos.coords.longitude, geofenceConfig.value.lat, geofenceConfig.value.lng);
-            // 判斷：距離是否小於等於「設定的半徑」
             isInGeofence.value = dist <= allowedRadius;
         },
         () => { 
@@ -2457,7 +2469,6 @@ const checkGeofence = () => {
     );
 };
 
-// 管理員用目前位置填入座標
 const useCurrentLocation = () => {
     if (!navigator.geolocation) { showToast("瀏覽器不支援定位", "warning"); return; }
     navigator.geolocation.getCurrentPosition(
@@ -2470,34 +2481,101 @@ const useCurrentLocation = () => {
     );
 };
 
-// 儲存圍籬 (將半徑一起存入 Firebase)
+// 儲存圍籬
 const saveGeofence = async () => {
     if (!geofenceForm.value.lat || !geofenceForm.value.lng) { showToast("請輸入座標", "warning"); return; }
     
-    // 防呆：確保 radius 是數字，如果不小心被清空，預設 50
     const finalRadius = Number(geofenceForm.value.radius) || 50;
+    const finalIdle = Number(geofenceForm.value.idleTimeout) || 30;
 
     await setDoc(doc(db, "passport_config", "geofence"), { 
         lat: geofenceForm.value.lat, 
         lng: geofenceForm.value.lng, 
         radius: finalRadius, 
+        idleTimeout: finalIdle, // 一併存入資料庫
         updatedAt: new Date().toISOString() 
     });
     
-    geofenceConfig.value = { ...geofenceForm.value, radius: finalRadius };
-    checkGeofence(); // 儲存後立刻重新驗證自己有沒有在圈圈裡
-    showToast(`圍籬已儲存 (半徑 ${finalRadius}m)`, "success");
+    geofenceConfig.value = { ...geofenceForm.value, radius: finalRadius, idleTimeout: finalIdle };
+    checkGeofence();
+    showToast(`設定已儲存 (半徑 ${finalRadius}m / 閒置 ${finalIdle}分)`, "success");
 };
 
-// 清除圍籬 (重置時連 radius 一起恢復預設)
 const clearGeofence = () => showAppConfirm('清除圍籬', '確定清除？清除後所有人皆可申請', async () => {
     await deleteDoc(doc(db, "passport_config", "geofence"));
     geofenceConfig.value = null; 
-    geofenceForm.value = { lat: null, lng: null, radius: 50 };
+    geofenceForm.value = { lat: null, lng: null, radius: 50, idleTimeout: 30 };
     isInGeofence.value = true; 
-    showToast("已清除圍籬", "success");
+    showToast("已清除圍籬設定", "success");
 });
+
 const openGeofenceSettings = () => { editorMode.value = 'geofence'; };
+
+// --- ▼ 核心：強制登出邏輯與自動監控 ▼ ---
+
+// 強制登出執行動作
+const forceAutoLogout = (reasonMsg) => {
+    if(!isInstructorMode.value) return;
+    isInstructorMode.value = false;
+    isEditorOpen.value = false;
+    showToast(reasonMsg, "warning"); // 顯示紅色的警告
+};
+
+// 重置閒置時間 (只要有碰到螢幕或滑鼠就會觸發)
+const resetIdleTimer = () => {
+    if (isInstructorMode.value) {
+        lastActivityTimestamp = Date.now();
+    }
+};
+
+// 全域監聽使用者的動作
+onMounted(() => {
+    window.addEventListener('touchstart', resetIdleTimer);
+    window.addEventListener('click', resetIdleTimer);
+    window.addEventListener('scroll', resetIdleTimer);
+    window.addEventListener('keydown', resetIdleTimer);
+});
+
+// 監聽教官模式狀態，決定是否開啟「追蹤」與「倒數計時」
+watch(isInstructorMode, (isActive) => {
+    if (isActive) {
+        // 1. 啟動閒置倒數計時器 (每 10 秒檢查一次)
+        lastActivityTimestamp = Date.now();
+        idleCheckTimer = setInterval(() => {
+            const timeoutMins = geofenceConfig.value?.idleTimeout || 30; // 預設 30 分鐘
+            const timePassed = Date.now() - lastActivityTimestamp;
+            if (timePassed > timeoutMins * 60 * 1000) {
+                forceAutoLogout(`已閒置超過 ${timeoutMins} 分鐘，為保護安全已自動登出`);
+            }
+        }, 10000);
+
+        // 2. 啟動即時 GPS 追蹤 (管理員不受距離限制，但仍受閒置時間限制)
+        if (geofenceConfig.value?.lat && navigator.geolocation && !isCurrentlyAdmin.value) {
+            const allowedRadius = geofenceConfig.value.radius || 50;
+            
+            locationWatchId.value = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const dist = calcDistance(pos.coords.latitude, pos.coords.longitude, geofenceConfig.value.lat, geofenceConfig.value.lng);
+                    // 為了避免 GPS 偶爾亂飄，給 10 公尺的緩衝空間
+                    if (dist > allowedRadius + 10) {
+                        forceAutoLogout(`您已遠離電子圍籬 (${Math.round(dist)}m)，系統強制登出`);
+                    }
+                },
+                (err) => { console.warn("GPS 訊號遺失，暫不強制登出以免誤判"); },
+                { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+            );
+        }
+
+    } else {
+        // 當教官登出時，把計時器跟 GPS 追蹤關閉，節省效能與電量
+        if (idleCheckTimer) clearInterval(idleCheckTimer);
+        if (locationWatchId.value !== null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(locationWatchId.value);
+            locationWatchId.value = null;
+        }
+    }
+});
+// ==========================================
 
 
 // --- 登入審核系統邏輯 ---
