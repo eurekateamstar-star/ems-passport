@@ -2401,11 +2401,19 @@ const deleteInstructor = (id) => {
             const getDifficultyColor = (lv) => { const map = { 'S+': 'text-rose-500', 'S': 'text-amber-500', 'A': 'text-blue-500', 'B': 'text-slate-500' }; return map[lv] || 'text-slate-400'; };
 
             watch(selectedStudent, (n) => { if(!n) return; isLoading.value = true; onSnapshot(query(collection(db, "passport_records"), where("userName", "==", n)), (s) => { studentRecords.value = s.docs.map(d => d.data()); isLoading.value = false; }); }, { immediate: true });
-            onMounted(async () => { 
-    fetchData(); 
-    await fetchGeofence(); // 加上 await，等設定抓回來
-    checkGeofence();       // 再執行驗證
-});
+           onMounted(async () => { 
+                fetchData(); 
+                await fetchGeofence(); // 加上 await，等設定抓回來
+                checkGeofence();       // 再執行驗證
+
+                // 👇👇👇 新增：監聽外層主系統叫我打開登入視窗的指令 👇👇👇
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.action === 'openInstructorLogin') {
+                        isLoginModalOpen.value = true; // 直接把變數設為 true，彈出解鎖視窗
+                    }
+                });
+                // 👆👆👆 新增結束 👆👆👆
+            });
 // ★ 加上這一段：監聽鎖頭按鈕，每次點開時都重新抓取定位
     watch(isLoginModalOpen, (newVal) => {
         if (newVal) {
