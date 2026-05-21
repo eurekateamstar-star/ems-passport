@@ -887,26 +887,37 @@
                         </select>
                     </div>
 
-                    <!-- 如果是管理員，顯示密碼框；如果是普通教官，顯示申請按鈕 -->
+                    <!-- 如果是管理員，顯示密碼框；如果是普通教官，顯示申請/直接登入按鈕 -->
                     <div v-if="isSelectedUserAdmin" class="space-y-1 animate-fade-in">
                         <label class="text-[11px] font-black text-slate-500 pl-1">管理員密碼</label>
                         <input v-model="loginForm.password" type="password" class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[14px] font-bold outline-none">
                         <button @click="handleAdminLogin" class="w-full py-3.5 bg-slate-800 text-white rounded-[12px] font-black text-base mt-4">管理員登入</button>
                     </div>
-                   <button v-else @click="requestLogin" 
-        :disabled="!loginForm.name || !isInGeofence" 
-        class="w-full py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base mt-4 disabled:opacity-50 flex justify-center items-center gap-2"
-        :class="!isInGeofence ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600'">
-    <i class="fa-solid fa-paper-plane"></i> 向管理者申請權限
-</button>
-<p v-if="!isInGeofence" class="text-center text-xs font-black text-rose-500 mt-2">
-    <i class="fa-solid fa-location-xmark mr-1"></i>不在允許範圍內，無法申請
-</p>
-<p v-else-if="geofenceConfig" class="text-center text-xs font-black text-emerald-500 mt-2">
-    <i class="fa-solid fa-location-dot mr-1"></i>位置驗證通過
-</p>
-                </template>
+                    <template v-else>
+                        <!-- 有效期內 (2小時)，直接登入 -->
+                        <button v-if="hasValidToken" @click="directLogin" 
+                            :disabled="!loginForm.name || !isInGeofence" 
+                            class="w-full py-3.5 bg-emerald-600 text-white rounded-[12px] font-black text-base mt-4 disabled:opacity-50 flex justify-center items-center gap-2 transition-all active:scale-95"
+                            :class="!isInGeofence ? 'bg-slate-400 cursor-not-allowed' : 'bg-emerald-600'">
+                            <i class="fa-solid fa-unlock-keyhole"></i> 直接登入 (權限 2 小時內有效)
+                        </button>
 
+                        <!-- 無效或過期，需重新申請 -->
+                        <button v-else @click="requestLogin" 
+                            :disabled="!loginForm.name || !isInGeofence" 
+                            class="w-full py-3.5 bg-blue-600 text-white rounded-[12px] font-black text-base mt-4 disabled:opacity-50 flex justify-center items-center gap-2 transition-all active:scale-95"
+                            :class="!isInGeofence ? 'bg-slate-400 cursor-not-allowed' : 'bg-blue-600'">
+                            <i class="fa-solid fa-paper-plane"></i> 向管理者申請權限
+                        </button>
+
+                        <p v-if="!isInGeofence" class="text-center text-xs font-black text-rose-500 mt-2">
+                            <i class="fa-solid fa-location-xmark mr-1"></i>不在允許範圍內，無法登入
+                        </p>
+                        <p v-else-if="geofenceConfig" class="text-center text-xs font-black text-emerald-500 mt-2">
+                            <i class="fa-solid fa-location-dot mr-1"></i>位置驗證通過
+                        </p>
+                    </template>
+</template>
                 <!-- 等待審核畫面 -->
                 <div v-if="loginStatus === 'requesting'" class="flex flex-col items-center justify-center py-8">
                     <i class="fa-solid fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
@@ -2620,6 +2631,37 @@ watch(isInstructorMode, (isActive) => {
                 pendingRequests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             });
 
+// ★ 新增：檢查是否有 2 小時內的有效 Token
+            const hasValidToken = computed(() => {
+                const tokenName = localStorage.getItem('instructor_token_name');
+                const tokenTime = localStorage.getItem('instructor_token_time');
+                
+                if (!tokenName || !tokenTime) return false;
+                if (tokenName !== loginForm.value.name) return false; // 必須是選擇同一個人
+
+                const now = Date.now();
+                const twoHours = 2 * 60 * 60 * 1000; // 2小時的毫秒數
+
+                if (now - parseInt(tokenTime) < twoHours) {
+                    return true; // 2小時內有效
+                } else {
+                    // 過期自動清除
+                    localStorage.removeItem('instructor_token_name');
+                    localStorage.removeItem('instructor_token_time');
+                    return false;
+                }
+            });
+
+            // ★ 新增：有效期限內直接登入
+            const directLogin = () => {
+                if (!loginForm.value.name || !isInGeofence.value) return;
+                isInstructorMode.value = true; 
+                currentInstructorName.value = loginForm.value.name;
+                isLoginModalOpen.value = false;
+                showToast("權限有效，直接登入", "success");
+            };
+
+
             // 1. 管理員自己登入 (輸入密碼)
             const handleAdminLogin = () => {
                 const u = instructorsList.value.find(i => i.name === loginForm.value.name);
@@ -2652,6 +2694,11 @@ watch(isInstructorMode, (isActive) => {
                             isInstructorMode.value = true; currentInstructorName.value = data.name;
                             isLoginModalOpen.value = false; loginStatus.value = 'idle';
                             showToast(`審核通過！解鎖權限`, "success");
+                            
+                            // 👇 新增這兩行：管理員同意後，在本地端發放有效期 2 小時的 Token
+                            localStorage.setItem('instructor_token_name', data.name);
+                            localStorage.setItem('instructor_token_time', Date.now().toString());
+
                             cleanUpRequest(docRef);
                         } else if (data.status === 'rejected') {
                             loginStatus.value = 'idle'; showToast("管理者已拒絕申請", "warning");
@@ -2958,7 +3005,7 @@ const handleSubModalClose = () => {
    centralGallery, filteredCentralGallery, galleryDifficultyFilter, setGalleryFilter, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
                 openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
                 startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,isEcgModalOpen, activeEcgStep, ecgState, ecgContainerRef, ecgTargetsMap, getEcgLeadColor, startEcgGame, closeECGGame, selectECGLead, handleEcgBodyClick, checkEcgPlacement, submitECG,
-                stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval,
+      stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval, hasValidToken, directLogin,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState, 
 triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager, saveTriageQuestion, deleteTriageQuestion, startTriageGame, answerTriage, submitTriageResult, closeTriageGame, triageSearchQuery, triageColorFilter, setTriageFilter, filteredTriageBank, editingTriageId, editTriageQuestion, cancelTriageEdit, getTriageColorName, getTriageColorText,
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
