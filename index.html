@@ -2631,25 +2631,19 @@ watch(isInstructorMode, (isActive) => {
                 pendingRequests.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             });
 
-// ★ 新增：檢查是否有 2 小時內的有效 Token
+// ★ 修改：檢查資料庫內該名教官的最後核准時間 (支援跨裝置)
             const hasValidToken = computed(() => {
-                const tokenName = localStorage.getItem('instructor_token_name');
-                const tokenTime = localStorage.getItem('instructor_token_time');
+                if (!loginForm.value.name) return false;
                 
-                if (!tokenName || !tokenTime) return false;
-                if (tokenName !== loginForm.value.name) return false; // 必須是選擇同一個人
+                // 找出目前選到的教官資料
+                const u = instructorsList.value.find(i => i.name === loginForm.value.name);
+                if (!u || !u.lastApprovedAt) return false;
 
                 const now = Date.now();
                 const twoHours = 2 * 60 * 60 * 1000; // 2小時的毫秒數
 
-                if (now - parseInt(tokenTime) < twoHours) {
-                    return true; // 2小時內有效
-                } else {
-                    // 過期自動清除
-                    localStorage.removeItem('instructor_token_name');
-                    localStorage.removeItem('instructor_token_time');
-                    return false;
-                }
+                // 如果現在時間距離資料庫記錄的核准時間 < 2小時，就給予通行
+                return (now - u.lastApprovedAt) < twoHours;
             });
 
             // ★ 新增：有效期限內直接登入
@@ -2679,12 +2673,11 @@ watch(isInstructorMode, (isActive) => {
                 const docRef = doc(db, "passport_login_requests", loginForm.value.name);
                 await setDoc(docRef, { name: loginForm.value.name, status: 'pending', timestamp: new Date().getTime() });
 
-                // 👇👇👇 新增這行：呼叫外層主系統，觸發推播給劉奕昕 👇👇👇
+                // 呼叫外層主系統，觸發推播給劉奕昕
                 window.parent.postMessage({ 
                     action: 'notifyAdminForAccess', 
                     requestName: loginForm.value.name 
                 }, '*');
-                // 👆👆👆 新增結束 👆👆👆
 
                 // 監聽自己的申請單狀態
                 requestUnsubscribe = onSnapshot(docRef, (docSnap) => {
@@ -2694,11 +2687,6 @@ watch(isInstructorMode, (isActive) => {
                             isInstructorMode.value = true; currentInstructorName.value = data.name;
                             isLoginModalOpen.value = false; loginStatus.value = 'idle';
                             showToast(`審核通過！解鎖權限`, "success");
-                            
-                            // 👇 新增這兩行：管理員同意後，在本地端發放有效期 2 小時的 Token
-                            localStorage.setItem('instructor_token_name', data.name);
-                            localStorage.setItem('instructor_token_time', Date.now().toString());
-
                             cleanUpRequest(docRef);
                         } else if (data.status === 'rejected') {
                             loginStatus.value = 'idle'; showToast("管理者已拒絕申請", "warning");
@@ -2722,10 +2710,18 @@ watch(isInstructorMode, (isActive) => {
 
             // 管理員按下同意或拒絕
             const handleApproval = async (id, status) => {
+                if (status === 'approved') {
+                    try {
+                        // ★ 新增：如果同意，就把當下的時間戳記寫入該教官的資料庫中 (跨裝置通用的關鍵)
+                        await updateDoc(doc(db, "passport_instructors", id), { 
+                            lastApprovedAt: Date.now() 
+                        });
+                    } catch(e) { console.warn("更新教官核准時間失敗", e); }
+                }
+                
                 await updateDoc(doc(db, "passport_login_requests", id), { status: status });
                 showToast(status === 'approved' ? "已核准" : "已拒絕", "info");
             };
-
             // 一般登出
             const handleLogout = () => showAppConfirm('登出', '確定退出教官模式？', () => { 
                 isInstructorMode.value = false; isEditorOpen.value = false; 
