@@ -464,7 +464,11 @@
         </div>
 
         <div v-if="editorMode === 'edit'" class="flex-1 overflow-y-auto p-4 pb-32 space-y-4">
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+    
+    
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <!-- 原本的「基本設定」... -->
+            
                 <div class="flex items-center gap-2 mb-2 border-b pb-2"><i class="fa-solid fa-cube text-blue-500"></i><span class="font-black text-sm text-slate-700">基本設定</span></div>
                 <div class="space-y-1">
                     <label class="text-[11px] font-black text-slate-500">大類別</label>
@@ -489,6 +493,38 @@
                     <div class="space-y-1 pt-1 pr-20"><label class="text-[10px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">小分類標題</label><input v-model="group.subItem" type="text" class="w-full bg-white border rounded-lg px-2.5 py-2 text-[14px] font-black outline-none mt-1"></div>
                     <div class="space-y-2 border-t pt-3">
                         <div v-for="(step, sIdx) in group.steps" :key="'step-'+gIdx+'-'+sIdx" class="bg-white border rounded-xl p-2.5 space-y-4">
+<!-- ▼ 單一步驟修改紀錄下拉選單 (有改動才會出現) ▼ -->
+<div v-if="step.stepHistory && step.stepHistory.length > 0" class="bg-amber-50 border border-amber-200 rounded-lg mb-2 overflow-hidden shadow-sm">
+    <!-- 點擊展開/收合標頭 -->
+    <div @click="step.showHistory = !step.showHistory" class="flex justify-between items-center p-2 cursor-pointer hover:bg-amber-100/50 transition-colors">
+        <span class="text-[10px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-1 border border-amber-200">
+            <i class="fa-solid fa-clock-rotate-left"></i> 此步驟有 {{ step.stepHistory.length }} 次修改紀錄
+        </span>
+        <i class="fa-solid fa-chevron-down text-[10px] text-amber-500 transition-transform duration-200" :class="{ 'rotate-180': step.showHistory }"></i>
+    </div>
+    
+    <!-- 展開的歷史列表 -->
+    <div v-show="step.showHistory" class="p-2 border-t border-amber-200/50 space-y-2 bg-amber-50/30">
+        <div v-for="(hist, hIdx) in step.stepHistory" :key="hIdx" class="bg-white border border-amber-100 rounded-lg p-2 shadow-sm relative">
+            <div class="flex justify-between items-center mb-1 pr-6">
+                <span class="text-[9px] font-black text-slate-500"><i class="fa-solid fa-user-pen mr-1"></i>{{ hist.by }}</span>
+                <span class="text-[9px] text-slate-400 font-bold font-num">{{ formatTime(hist.at) }}</span>
+            </div>
+            
+            <!-- ▼ 只有管理員才看得到的刪除按鈕 ▼ -->
+            <button v-if="isCurrentlyAdmin" @click.stop="deleteStepHistory(step, hIdx)" class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors">
+                <i class="fa-solid fa-trash-can text-[10px]"></i>
+            </button>
+            <!-- ▲ 結束 ▲ -->
+
+            <p class="text-[11px] font-bold text-amber-700 leading-snug pr-2">
+                <span class="text-amber-400 mr-1 block text-[9px] mb-0.5">原本的內容：</span>
+                {{ hist.oldText }}
+            </p>
+        </div>
+    </div>
+</div>
+<!-- ▲ 結束 ▲ -->
                             <div class="flex gap-2 items-start">
                                 <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 mt-1.5 font-num font-black text-[10px]">{{ sIdx + 1 }}</div>
                                 <textarea v-model="step.text" placeholder="輸入步驟說明文字..." class="flex-1 bg-slate-50 border rounded-lg px-2.5 py-2 text-[13px] font-bold h-16 outline-none"></textarea>
@@ -1706,6 +1742,11 @@
             const loginForm = ref({ name: '', password: '' }), currentInstructorName = ref(''), isEditorOpen = ref(false), editorMode = ref('list'), isEditorSaving = ref(false), isNewCategory = ref(false), newCategoryName = ref(''), sessionUploadedUrls = ref([]);
             const editForm = ref({ originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [] });
 
+// ▼ 新增這三個變數，處理題目修改紀錄 ▼
+const editHistoryData = ref([]); 
+const isHistoryModalOpen = ref(false);
+const selectedHistoryVersion = ref(null);
+// ▲ 新增結束 ▲
             // 注意這裡把 '訪客' 換成了 defaultStudent
             const iconList = computed(() => ALL_ICONS.slice(0, 18)), isMainModalOpen = ref(false), activeSubModal = ref(null), selectedStudent = ref(defaultStudent), usersList = ref([]), rawQuestions = ref([]), studentRecords = ref([]), editorCategories = ref([]), activeItem = ref(null), itemSections = ref([]), gradingState = ref([]), evalRemarks = ref(''), showEquipment = ref(false), toast = ref({ show: false, msg: '', icon: '', color: '' }), appConfirm = ref({ show: false, title: '', msg: '', onConfirm: null });
 
@@ -2948,30 +2989,99 @@ const handleSubModalClose = () => {
             };
 
             const removeStepImage = (g, sIdx, imgIdx, url) => { g.steps[sIdx].images.splice(imgIdx, 1); deleteImageFromStorage(url); sessionUploadedUrls.value = sessionUploadedUrls.value.filter(u => u !== url); };
-            const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2, triagePick: 10, triageTimer: 60, triagePassRate: 100 }] }] }; editorMode.value = 'edit'; };
+           const createNewItem = () => { sessionUploadedUrls.value = []; editForm.value = { originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [{ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2, triagePick: 10, triageTimer: 60, triagePassRate: 100 }] }] }; editorMode.value = 'edit'; };
+            
             const editItem = (item) => {
                 sessionUploadedUrls.value = []; const grp = []; let cur = null;
-                item.steps?.forEach(s => { const n = s.subItem || item.name; if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } 
-                let mode = s.mode || 'none'; if(mode==='none' && s.isGameMode) mode = 'game'; if(mode==='none' && s.isTimerMode) mode = 'timer';
-                cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100 }); 
+                item.steps?.forEach(s => { 
+                    const n = s.subItem || item.name; 
+                    if(!cur || cur.subItem !== n) { cur = { subItem: n, steps: [] }; grp.push(cur); } 
+                    let mode = s.mode || 'none'; 
+                    if(mode==='none' && s.isGameMode) mode = 'game'; 
+                    if(mode==='none' && s.isTimerMode) mode = 'timer';
+                    cur.steps.push({ text: s.text || '', images: s.images || [], mode: mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100, stepHistory: s.stepHistory || [] }); 
                 });
-                editForm.value = { originalDocId: item.id, category: item.category, name: item.name, icon: item.icon || 'fa-clipboard-list', locked: !!item.locked, equipment: item.equipment || '', orderWeight: item.orderWeight || 99, catOrderWeight: item.catOrderWeight || 999, groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] }] };
+                
+                editHistoryData.value = item.editHistory || [];
+                editForm.value = { 
+                    originalDocId: item.id, 
+                    originalData: JSON.parse(JSON.stringify(item)),
+                    category: item.category, 
+                    name: item.name, 
+                    icon: item.icon || 'fa-clipboard-list', 
+                    locked: !!item.locked, 
+                    equipment: item.equipment || '', 
+                    orderWeight: item.orderWeight || 99, 
+                    catOrderWeight: item.catOrderWeight || 999, 
+                    groupedSections: grp.length ? grp : [{ subItem: item.name, steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] }] 
+                };
                 editorMode.value = 'edit';
             };
 
             const checkNewCategory = () => { if(editForm.value.category !== 'NEW_CATEGORY') { const ex = displayCategories.value.find(c => c.name === editForm.value.category); if(ex) editForm.value.icon = ex.icon; } };
+            
             const saveItem = async () => {
-                const f = editForm.value; const c = isNewCategory.value ? newCategoryName.value.trim() : f.category; if(!c || !f.name) return showToast("填寫資訊", "warning");
-                isEditorSaving.value = true; const nId = `${c}_${f.name}`;
-       const stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100 })));
+                const f = editForm.value; 
+                const c = isNewCategory.value ? newCategoryName.value.trim() : f.category; 
+                if(!c || !f.name) return showToast("填寫資訊", "warning");
+                isEditorSaving.value = true; 
+                const nId = `${c}_${f.name}`;
+                
+                let stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100, stepHistory: s.stepHistory || [] })));
+                
+                if (f.originalDocId && f.originalData && f.originalData.steps) {
+                    const oldStps = f.originalData.steps;
+                    stps.forEach((newStep, idx) => {
+                        const oldStep = oldStps[idx];
+                        if (oldStep) {
+                            if (newStep.text !== (oldStep.text || '').trim() || newStep.mode !== oldStep.mode) {
+                                newStep.stepHistory.unshift({
+                                    by: currentInstructorName.value || '未知教官',
+                                    at: new Date().toISOString(),
+                                    oldText: oldStep.text || '(無)'
+                                });
+                                if (newStep.stepHistory.length > 5) newStep.stepHistory.pop();
+                            }
+                        }
+                    });
+                }
+
+                let newHistory = [];
+                if (f.originalDocId && f.originalData) {
+                    newHistory = f.originalData.editHistory || [];
+                    newHistory.unshift({
+                        editedBy: currentInstructorName.value || '未知教官',
+                        editedAt: new Date().toISOString(),
+                        dataSnapshot: {
+                            name: f.originalData.name,
+                            category: f.originalData.category,
+                            equipment: f.originalData.equipment,
+                            steps: f.originalData.steps || []
+                        }
+                    });
+                    if (newHistory.length > 10) newHistory.pop();
+                }
+
                 try {
-                    const batch = writeBatch(db); if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
-                    let cw = f.catOrderWeight; const ex = displayCategories.value.find(cat => cat.name === c);
+                    const batch = writeBatch(db); 
+                    if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
+                    let cw = f.catOrderWeight; 
+                    const ex = displayCategories.value.find(cat => cat.name === c);
                     if(isNewCategory.value) cw = displayCategories.value.length * 10; else if(ex) cw = ex.orderWeight;
-                    batch.set(doc(db, "passport_questions", nId), { category: c, name: f.name, icon: f.icon, locked: !!f.locked, equipment: f.equipment, orderWeight: f.orderWeight, catOrderWeight: cw, steps: stps });
+                    
+                    batch.set(doc(db, "passport_questions", nId), { category: c, name: f.name, icon: f.icon, locked: !!f.locked, equipment: f.equipment, orderWeight: f.orderWeight, catOrderWeight: cw, steps: stps, editHistory: newHistory });
+
                     rawQuestions.value.filter(q => q.category === c && q.id !== f.originalDocId && q.id !== nId).forEach(q => { if(q.icon !== f.icon || q.catOrderWeight !== cw) batch.update(doc(db, "passport_questions", q.id), { icon: f.icon, catOrderWeight: cw }); });
-                    await batch.commit(); sessionUploadedUrls.value = []; showToast("儲存成功", "success"); await fetchQuestions(true); editorMode.value = 'list';
-                } catch(e){ showToast("錯誤", "warning"); } finally { isEditorSaving.value = false; }
+                    await batch.commit(); 
+                    sessionUploadedUrls.value = []; 
+                    showToast("儲存成功", "success"); 
+                    await fetchQuestions(true); 
+                    editorMode.value = 'list';
+                } catch(e){ 
+                    showToast("錯誤", "warning"); 
+                } finally { 
+                    isEditorSaving.value = false; 
+                }
             };
 
             const deleteItem = (i) => showAppConfirm('刪除', `確定刪除「${i.name}」？`, async () => { await deleteDoc(doc(db, "passport_questions", i.id)); fetchQuestions(true); });
@@ -2991,18 +3101,25 @@ const handleSubModalClose = () => {
             const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] });
             const addStepToGroup = (g) => g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 });
             const removeGroup = (i) => editForm.value.groupedSections.splice(i, 1);
+// 刪除單一步驟的修改紀錄 (僅限管理員)
+            const deleteStepHistory = (step, hIdx) => {
+                showAppConfirm('刪除紀錄', '確定要刪除這筆修改紀錄嗎？', () => {
+                    step.stepHistory.splice(hIdx, 1);
+                    showToast('已刪除該筆紀錄', 'success');
+                });
+            };
             const removeStep = (g, i) => { g.steps.splice(i, 1); if(!g.steps.length) g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }); };
             const moveGroup = (i, d) => { const a = editForm.value.groupedSections, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
             return {
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, totalCompletedCount, totalItemsCount, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
-                gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,
+                gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,deleteStepHistory,
    centralGallery, filteredCentralGallery, galleryDifficultyFilter, setGalleryFilter, openGalleryManager, uploadToCentralGallery, deleteFromCentralGallery, currentUploadDifficulty, getDifficultyColor, geofenceForm, geofenceConfig, isInGeofence, userLocation,
                 openGeofenceSettings, useCurrentLocation, saveGeofence, clearGeofence, checkGeofence,isAedModalOpen, activeAedStep, aedState, startAedGame, stopAedGame, 
                 startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,isEcgModalOpen, activeEcgStep, ecgState, ecgContainerRef, ecgTargetsMap, getEcgLeadColor, startEcgGame, closeECGGame, selectECGLead, handleEcgBodyClick, checkEcgPlacement, submitECG,
       stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval, hasValidToken, directLogin,
-                isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState, 
+                isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState, editHistoryData, isHistoryModalOpen, selectedHistoryVersion, 
 triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager, saveTriageQuestion, deleteTriageQuestion, startTriageGame, answerTriage, submitTriageResult, closeTriageGame, triageSearchQuery, triageColorFilter, setTriageFilter, filteredTriageBank, editingTriageId, editTriageQuestion, cancelTriageEdit, getTriageColorName, getTriageColorText,
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
             };
