@@ -503,24 +503,43 @@
         <i class="fa-solid fa-chevron-down text-[10px] text-amber-500 transition-transform duration-200" :class="{ 'rotate-180': step.showHistory }"></i>
     </div>
     
-    <!-- 展開的歷史列表 -->
+   <!-- 展開的歷史列表 -->
     <div v-show="step.showHistory" class="p-2 border-t border-amber-200/50 space-y-2 bg-amber-50/30">
-        <div v-for="(hist, hIdx) in step.stepHistory" :key="hIdx" class="bg-white border border-amber-100 rounded-lg p-2 shadow-sm relative">
+        <div v-for="(hist, hIdx) in step.stepHistory" :key="hIdx" 
+             class="rounded-lg p-2 relative transition-all"
+             :class="hIdx === 0 ? 'bg-white border-2 border-blue-200 shadow-md' : 'bg-slate-50/80 border border-dashed border-slate-300 opacity-80 hover:opacity-100'">
+            
             <div class="flex justify-between items-center mb-1 pr-6">
-                <span class="text-[9px] font-black text-slate-500"><i class="fa-solid fa-user-pen mr-1"></i>{{ hist.by }}</span>
-                <span class="text-[9px] text-slate-400 font-bold font-num">{{ formatTime(hist.at) }}</span>
+                <div class="flex items-center gap-1.5">
+                    <!-- ▼ 最新修改的專屬標籤 ▼ -->
+                    <span v-if="hIdx === 0" class="text-[9px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-black shadow-sm">最新</span>
+                    <span class="text-[9px] font-black" :class="hIdx === 0 ? 'text-blue-700' : 'text-slate-400'">
+                        <i class="fa-solid fa-user-pen mr-1"></i>{{ hist.by }}
+                    </span>
+                </div>
+                <span class="text-[9px] font-bold font-num" :class="hIdx === 0 ? 'text-blue-400' : 'text-slate-400'">{{ formatTime(hist.at) }}</span>
             </div>
             
             <!-- ▼ 只有管理員才看得到的刪除按鈕 ▼ -->
-            <button v-if="isCurrentlyAdmin" @click.stop="deleteStepHistory(step, hIdx)" class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors">
+            <button v-if="isCurrentlyAdmin" @click.stop="deleteStepHistory(step, hIdx)" 
+                    class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded transition-colors"
+                    :class="hIdx === 0 ? 'text-rose-400 hover:text-rose-600 hover:bg-rose-50' : 'text-slate-300 hover:text-rose-500 hover:bg-slate-200'">
                 <i class="fa-solid fa-trash-can text-[10px]"></i>
             </button>
-            <!-- ▲ 結束 ▲ -->
 
-            <p class="text-[11px] font-bold text-amber-700 leading-snug pr-2">
-                <span class="text-amber-400 mr-1 block text-[9px] mb-0.5">原本的內容：</span>
-                {{ hist.oldText }}
-            </p>
+            <!-- ▼ 原本與改成的對照區塊 ▼ -->
+            <div class="mt-2 space-y-1.5 pr-2">
+                <!-- 原本的內容 -->
+                <div class="p-1.5 rounded border" :class="hIdx === 0 ? 'bg-slate-50 border-slate-100' : 'bg-transparent border-slate-200'">
+                    <span class="text-[9px] block mb-0.5" :class="hIdx === 0 ? 'text-slate-400' : 'text-slate-400'">原本的內容：</span>
+                    <span class="text-[11px] font-bold line-through whitespace-pre-line" :class="hIdx === 0 ? 'text-slate-500' : 'text-slate-400'">{{ hist.oldText }}</span>
+                </div>
+                <!-- 改成的內容 -->
+                <div v-if="hist.newText" class="p-1.5 rounded border" :class="hIdx === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 shadow-sm'">
+                    <span class="text-[9px] block mb-0.5" :class="hIdx === 0 ? 'text-emerald-600' : 'text-slate-400'">改成：</span>
+                    <span class="text-[11px] font-black whitespace-pre-line" :class="hIdx === 0 ? 'text-emerald-700' : 'text-slate-500'">{{ hist.newText }}</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -3035,13 +3054,14 @@ const handleSubModalClose = () => {
                         const oldStep = oldStps[idx];
                         if (oldStep) {
                             if (newStep.text !== (oldStep.text || '').trim() || newStep.mode !== oldStep.mode) {
-                                newStep.stepHistory.unshift({
-                                    by: currentInstructorName.value || '未知教官',
-                                    at: new Date().toISOString(),
-                                    oldText: oldStep.text || '(無)'
-                                });
-                                if (newStep.stepHistory.length > 5) newStep.stepHistory.pop();
-                            }
+    newStep.stepHistory.unshift({
+        by: currentInstructorName.value || '未知教官',
+        at: new Date().toISOString(),
+        oldText: oldStep.text || '(無)',
+        newText: newStep.text || '(清空)' // <--- 加入這行，紀錄改成什麼！
+    });
+    if (newStep.stepHistory.length > 5) newStep.stepHistory.pop();
+}
                         }
                     });
                 }
