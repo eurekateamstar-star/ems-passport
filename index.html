@@ -3039,88 +3039,113 @@ const handleSubModalClose = () => {
 
             const checkNewCategory = () => { if(editForm.value.category !== 'NEW_CATEGORY') { const ex = displayCategories.value.find(c => c.name === editForm.value.category); if(ex) editForm.value.icon = ex.icon; } };
             
-            const saveItem = async () => {
-                const f = editForm.value; 
-                const c = isNewCategory.value ? newCategoryName.value.trim() : f.category; 
-                if(!c || !f.name) return showToast("填寫資訊", "warning");
-                isEditorSaving.value = true; 
-                const nId = `${c}_${f.name}`;
-                
-                let stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ 
-    subItem: (g.subItem || "").trim() || f.name, // 加上 (g.subItem || "") 防止 trim 報錯
-    text: s.text.trim(), 
-    images: s.images || [], 
-    mode: s.mode, 
-    gamePick: s.gamePick || 3, 
-    gameTimer: s.gameTimer || 60, 
-    gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], 
-    timerLimit: s.timerLimit || 30, 
-    bvmGoal: s.bvmGoal || 10, 
-    bvmInterval: s.bvmInterval || 6.0, 
-    bvmTolerance: s.bvmTolerance || 0.2, 
-    triagePick: s.triagePick || 10, 
-    triageTimer: s.triageTimer || 60, 
-    triagePassRate: s.triagePassRate ?? 100, 
-    stepHistory: s.stepHistory || [] // 確保有值
-})));
-
-                
-                if (f.originalDocId && f.originalData && f.originalData.steps) {
-                    const oldStps = f.originalData.steps;
-                    stps.forEach((newStep, idx) => {
-                        const oldStep = oldStps[idx];
-                        if (oldStep) {
-                            if (newStep.text !== (oldStep.text || '').trim() || newStep.mode !== oldStep.mode) {
-    newStep.stepHistory.unshift({
-        by: currentInstructorName.value || '未知教官',
-        at: new Date().toISOString(),
-        oldText: oldStep.text || '(無)',
-        newText: newStep.text || '(清空)' // <--- 加入這行，紀錄改成什麼！
-    });
-    if (newStep.stepHistory.length > 5) newStep.stepHistory.pop();
-}
-                        }
+          const saveItem = async () => {
+    const f = editForm.value; 
+    const c = isNewCategory.value ? newCategoryName.value.trim() : f.category; 
+    
+    // 1. 基礎驗證
+    if(!c || !f.name) return showToast("請填寫類別與名稱", "warning");
+    isEditorSaving.value = true; 
+    const nId = `${c}_${f.name}`;
+    
+    // 2. 處理步驟資料 (加上預設值防護)
+    let stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ 
+        subItem: (g.subItem || "").trim() || f.name, 
+        text: (s.text || "").trim(), 
+        images: s.images || [], 
+        mode: s.mode || 'none', 
+        gamePick: s.gamePick || 3, 
+        gameTimer: s.gameTimer || 60, 
+        gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], 
+        timerLimit: s.timerLimit || 30, 
+        bvmGoal: s.bvmGoal || 10, 
+        bvmInterval: s.bvmInterval || 6.0, 
+        bvmTolerance: s.bvmTolerance || 0.2, 
+        triagePick: s.triagePick || 10, 
+        triageTimer: s.triageTimer || 60, 
+        triagePassRate: s.triagePassRate ?? 100, 
+        stepHistory: s.stepHistory || [] 
+    })));
+    
+    // 3. 處理步驟修改紀錄
+    if (f.originalDocId && f.originalData && f.originalData.steps) {
+        const oldStps = f.originalData.steps;
+        stps.forEach((newStep, idx) => {
+            const oldStep = oldStps[idx];
+            if (oldStep) {
+                if ((newStep.text !== (oldStep.text || '').trim()) || (newStep.mode !== (oldStep.mode || 'none'))) {
+                    newStep.stepHistory.unshift({
+                        by: currentInstructorName.value || '未知教官',
+                        at: new Date().toISOString(),
+                        oldText: oldStep.text || '(無)',
+                        newText: newStep.text || '(清空)'
                     });
+                    if (newStep.stepHistory.length > 5) newStep.stepHistory.pop();
                 }
+            }
+        });
+    }
 
-                let newHistory = [];
-                if (f.originalDocId && f.originalData) {
-                    newHistory = f.originalData.editHistory || [];
-                    newHistory.unshift({
-                        editedBy: currentInstructorName.value || '未知教官',
-                        editedAt: new Date().toISOString(),
-                        dataSnapshot: {
-                            name: f.originalData.name,
-                            category: f.originalData.category,
-                            equipment: f.originalData.equipment,
-                            steps: f.originalData.steps || []
-                        }
-                    });
-                    if (newHistory.length > 10) newHistory.pop();
-                }
+    // 4. 處理整體編輯紀錄 (Snapshot 防護)
+    let newHistory = [];
+    if (f.originalDocId && f.originalData) {
+        newHistory = f.originalData.editHistory || [];
+        newHistory.unshift({
+            editedBy: currentInstructorName.value || '未知教官',
+            editedAt: new Date().toISOString(),
+            dataSnapshot: {
+                name: f.originalData.name || "",
+                category: f.originalData.category || "",
+                equipment: f.originalData.equipment || "", // 防止 undefined
+                steps: f.originalData.steps || []
+            }
+        });
+        if (newHistory.length > 10) newHistory.pop();
+    }
 
-                try {
-                    const batch = writeBatch(db); 
-                    if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
-                    let cw = f.catOrderWeight; 
-                    const ex = displayCategories.value.find(cat => cat.name === c);
-                    if(isNewCategory.value) cw = displayCategories.value.length * 10; else if(ex) cw = ex.orderWeight;
-                    
-                    batch.set(doc(db, "passport_questions", nId), { category: c, name: f.name, icon: f.icon, locked: !!f.locked, equipment: f.equipment, orderWeight: f.orderWeight, catOrderWeight: cw, steps: stps, editHistory: newHistory });
+    try {
+        const batch = writeBatch(db); 
+        if(f.originalDocId && f.originalDocId !== nId) batch.delete(doc(db, "passport_questions", f.originalDocId));
+        
+        // 計算類別權重
+        let cw = f.catOrderWeight || 999; 
+        const ex = displayCategories.value.find(cat => cat.name === c);
+        if(isNewCategory.value) cw = displayCategories.value.length * 10; 
+        else if(ex) cw = ex.orderWeight || 0;
+        
+        // 5. 執行寫入 (對所有欄位加上 || 防護)
+        batch.set(doc(db, "passport_questions", nId), { 
+            category: c || "未分類", 
+            name: f.name || "未命名", 
+            icon: f.icon || 'fa-clipboard-list', 
+            locked: !!f.locked, 
+            equipment: f.equipment || '', // 重要：確保不為 undefined
+            orderWeight: f.orderWeight || 0, // 重要：確保不為 undefined
+            catOrderWeight: cw || 0,         // 重要：確保不為 undefined
+            steps: stps, 
+            editHistory: newHistory 
+        });
 
-                    rawQuestions.value.filter(q => q.category === c && q.id !== f.originalDocId && q.id !== nId).forEach(q => { if(q.icon !== f.icon || q.catOrderWeight !== cw) batch.update(doc(db, "passport_questions", q.id), { icon: f.icon, catOrderWeight: cw }); });
-                    await batch.commit(); 
-                    sessionUploadedUrls.value = []; 
-                    showToast("儲存成功", "success"); 
-                    await fetchQuestions(true); 
-                    editorMode.value = 'list';
-                } catch(e) { 
-    console.error("儲存失敗詳細原因：", e); // <--- 加入這行，若還有錯，請按 F12 查看控制台
-    showToast("錯誤：" + e.message, "warning"); 
-} finally { 
-    isEditorSaving.value = false; 
-}
-            };
+        // 更新同類別的其他項目圖示與權重
+        rawQuestions.value.filter(q => q.category === c && q.id !== f.originalDocId && q.id !== nId).forEach(q => { 
+            batch.update(doc(db, "passport_questions", q.id), { 
+                icon: f.icon || 'fa-clipboard-list', 
+                catOrderWeight: cw || 0 
+            }); 
+        });
+
+        await batch.commit(); 
+        sessionUploadedUrls.value = []; 
+        showToast("資料庫儲存成功", "success"); 
+        await fetchQuestions(true); 
+        editorMode.value = 'list';
+    } catch(e){ 
+        console.error("儲存失敗：", e);
+        showToast("儲存失敗：" + e.message, "warning"); 
+    } finally { 
+        isEditorSaving.value = false; 
+    }
+};
 
             const deleteItem = (i) => showAppConfirm('刪除', `確定刪除「${i.name}」？`, async () => { await deleteDoc(doc(db, "passport_questions", i.id)); fetchQuestions(true); });
             const moveCategoryOrder = async (idx, dir) => {
