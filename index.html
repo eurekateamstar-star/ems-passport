@@ -3046,7 +3046,24 @@ const handleSubModalClose = () => {
                 isEditorSaving.value = true; 
                 const nId = `${c}_${f.name}`;
                 
-                let stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ subItem: g.subItem.trim() || f.name, text: s.text.trim(), images: s.images || [], mode: s.mode, gamePick: s.gamePick || 3, gameTimer: s.gameTimer || 60, gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], timerLimit: s.timerLimit || 30, bvmGoal: s.bvmGoal || 10, bvmInterval: s.bvmInterval || 6.0, bvmTolerance: s.bvmTolerance || 0.2, triagePick: s.triagePick || 10, triageTimer: s.triageTimer || 60, triagePassRate: s.triagePassRate ?? 100, stepHistory: s.stepHistory || [] })));
+                let stps = f.groupedSections.flatMap(g => g.steps.filter(s => s.text.trim() || s.images?.length || s.mode !== 'none').map(s => ({ 
+    subItem: (g.subItem || "").trim() || f.name, // 加上 (g.subItem || "") 防止 trim 報錯
+    text: s.text.trim(), 
+    images: s.images || [], 
+    mode: s.mode, 
+    gamePick: s.gamePick || 3, 
+    gameTimer: s.gameTimer || 60, 
+    gamePool: s.gamePool || ['S+', 'S', 'A', 'B'], 
+    timerLimit: s.timerLimit || 30, 
+    bvmGoal: s.bvmGoal || 10, 
+    bvmInterval: s.bvmInterval || 6.0, 
+    bvmTolerance: s.bvmTolerance || 0.2, 
+    triagePick: s.triagePick || 10, 
+    triageTimer: s.triageTimer || 60, 
+    triagePassRate: s.triagePassRate ?? 100, 
+    stepHistory: s.stepHistory || [] // 確保有值
+})));
+
                 
                 if (f.originalDocId && f.originalData && f.originalData.steps) {
                     const oldStps = f.originalData.steps;
@@ -3097,11 +3114,12 @@ const handleSubModalClose = () => {
                     showToast("儲存成功", "success"); 
                     await fetchQuestions(true); 
                     editorMode.value = 'list';
-                } catch(e){ 
-                    showToast("錯誤", "warning"); 
-                } finally { 
-                    isEditorSaving.value = false; 
-                }
+                } catch(e) { 
+    console.error("儲存失敗詳細原因：", e); // <--- 加入這行，若還有錯，請按 F12 查看控制台
+    showToast("錯誤：" + e.message, "warning"); 
+} finally { 
+    isEditorSaving.value = false; 
+}
             };
 
             const deleteItem = (i) => showAppConfirm('刪除', `確定刪除「${i.name}」？`, async () => { await deleteDoc(doc(db, "passport_questions", i.id)); fetchQuestions(true); });
@@ -3118,8 +3136,43 @@ const handleSubModalClose = () => {
                 cat.items = items; await batch.commit(); fetchQuestions();
             };
 
-            const addGroup = () => editForm.value.groupedSections.push({ subItem: '', steps: [{ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 }] });
-            const addStepToGroup = (g) => g.steps.push({ text: '', images: [], mode: 'none', gamePick: 3, gameTimer: 60, gamePool: ['S+', 'S', 'A', 'B'], timerLimit: 30, bvmGoal: 10, bvmInterval: 6.0, bvmTolerance: 0.2 });
+           // 尋找 addGroup 函式並替換為：
+const addGroup = () => editForm.value.groupedSections.push({ 
+    subItem: '', 
+    steps: [{ 
+        text: '', 
+        images: [], 
+        mode: 'none', 
+        gamePick: 3, 
+        gameTimer: 60, 
+        gamePool: ['S+', 'S', 'A', 'B'], 
+        timerLimit: 30, 
+        bvmGoal: 10, 
+        bvmInterval: 6.0, 
+        bvmTolerance: 0.2, 
+        triagePick: 10, 
+        triageTimer: 60, 
+        triagePassRate: 100,
+        stepHistory: [] // <--- 務必加上這一行
+    }] 
+});
+          // 尋找 addStepToGroup 函式並替換為：
+const addStepToGroup = (g) => g.steps.push({ 
+    text: '', 
+    images: [], 
+    mode: 'none', 
+    gamePick: 3, 
+    gameTimer: 60, 
+    gamePool: ['S+', 'S', 'A', 'B'], 
+    timerLimit: 30, 
+    bvmGoal: 10, 
+    bvmInterval: 6.0, 
+    bvmTolerance: 0.2, 
+    triagePick: 10, 
+    triageTimer: 60, 
+    triagePassRate: 100,
+    stepHistory: [] // <--- 務必加上這一行
+});
             const removeGroup = (i) => editForm.value.groupedSections.splice(i, 1);
 // 刪除單一步驟的修改紀錄 (僅限管理員)
             const deleteStepHistory = (step, hIdx) => {
