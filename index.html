@@ -2345,24 +2345,39 @@ const startTriageGame = (step) => {
 // 改為從新的獨立陣列取得教官名單
 // 先宣告變數
 const instructorsList = computed(() => instructorsBank.value.length ? instructorsBank.value : []);
-           const studentsList = computed(() => {
+        const studentsList = computed(() => {
     let list = usersList.value.length ? [...usersList.value] : [];
     
-    // 1. 自動去重與過濾無效名字
+    // 1. 去重與過濾無效資料
     const uniqueMap = new Map();
     list.forEach(u => {
         if (u && u.name && typeof u.name === 'string' && u.name.trim() !== '') {
             uniqueMap.set(u.name.trim(), u);
         }
     });
-    let uniqueList = Array.from(uniqueMap.values());
 
-    // 2. 如果目前學員名字不在選單中，自動補進第一項
-    if (selectedStudent.value && !uniqueMap.has(selectedStudent.value)) {
-        uniqueList.unshift({ uid: 'ext_student', name: selectedStudent.value });
+    // 2. 🌟 設定前 4 位置頂學員順序
+    const priorityNames = ["郭允昊", "柯品瑜", "林子傑", "蔡尚辰"];
+    const topList = [];
+    priorityNames.forEach(pName => {
+        if (uniqueMap.has(pName)) {
+            topList.push(uniqueMap.get(pName));
+            uniqueMap.delete(pName); // 取出後從剩餘名單移除
+        }
+    });
+
+    // 3. 剩下的成員照筆劃/拼音排序
+    const restList = Array.from(uniqueMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+
+    // 4. 組合：4 位置頂學員 + 其他成員
+    let finalSortedList = [...topList, ...restList];
+
+    // 5. 若當前選中的學員不在列表中，自動補進
+    if (selectedStudent.value && !finalSortedList.some(u => u.name === selectedStudent.value)) {
+        finalSortedList.unshift({ uid: 'ext_student', name: selectedStudent.value });
     }
 
-    return uniqueList.length ? uniqueList : [{ uid: 'guest', name: '訪客' }];
+    return finalSortedList.length ? finalSortedList : [{ uid: 'guest', name: '訪客' }];
 });
             const showToast = (msg, type = 'info') => { toast.value.msg = msg; toast.value.icon = type === 'success' ? 'fa-solid fa-circle-check' : (type === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-info-circle'); toast.value.color = type === 'success' ? '#34d399' : (type === 'warning' ? '#fbbf24' : '#60a5fa'); toast.value.show = true; setTimeout(() => toast.value.show = false, 2500); };
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
