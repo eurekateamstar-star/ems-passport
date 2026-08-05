@@ -2345,25 +2345,30 @@ const startTriageGame = (step) => {
 // 改為從新的獨立陣列取得教官名單
 // 先宣告變數
 const instructorsList = computed(() => instructorsBank.value.length ? instructorsBank.value : []);
-         // 修正後：確保 selectedStudent 和動態名單都能正確出現在選單中
-const studentsList = computed(() => {
+           const studentsList = computed(() => {
     let list = usersList.value.length ? [...usersList.value] : [];
-
-    // 如果 selectedStudent 有值且不在清單中，自動補進清單頂端
+    // 只要 selectedStudent 有名字且不在列表內，自動強制補進選單第一項
     if (selectedStudent.value && !list.some(u => u.name === selectedStudent.value)) {
         list.unshift({ uid: 'ext_' + Date.now(), name: selectedStudent.value });
     }
-
     return list.length ? list : [{ uid: 'guest', name: '訪客' }];
 });
             const showToast = (msg, type = 'info') => { toast.value.msg = msg; toast.value.icon = type === 'success' ? 'fa-solid fa-circle-check' : (type === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-info-circle'); toast.value.color = type === 'success' ? '#34d399' : (type === 'warning' ? '#fbbf24' : '#60a5fa'); toast.value.show = true; setTimeout(() => toast.value.show = false, 2500); };
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
             const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
 
-            const fetchData = async () => { try { // 修正後：改用 onSnapshot 實時監聽，主系統新增成員時，子系統會立刻自動同步！
-onSnapshot(collection(db, "passport_users"), (snap) => {
-    usersList.value = snap.docs.map(d => d.data());
-}); await fetchQuestions(true); fetchCentralGallery(); fetchTriageBank(); fetchInstructors(); } catch(e){} };
+            const fetchData = async () => { 
+    try { 
+        // 改用 onSnapshot，只要資料庫有新增成員，這裡就會自動即時更新
+        onSnapshot(collection(db, "passport_users"), (snap) => {
+            usersList.value = snap.docs.map(d => d.data());
+        });
+        await fetchQuestions(true); 
+        fetchCentralGallery(); 
+        fetchTriageBank(); 
+        fetchInstructors(); 
+    } catch(e){} 
+};
             const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
             const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
 
@@ -2491,31 +2496,34 @@ const deleteInstructor = (id) => {
     checkGeofence();       // 再執行驗證
 });
           onMounted(async () => { 
-    fetchData(); 
-    await fetchGeofence(); 
-    checkGeofence();       
+                fetchData(); 
+                await fetchGeofence(); 
+                checkGeofence();       
 
-    // 監聽來自外層主系統（Parent Window）的所有指令
-    window.addEventListener('message', (event) => {
-        if (!event.data) return;
+                // 監聽主系統傳來的所有指令（打開登入、切換學員、同步名單）
+                window.addEventListener('message', (event) => {
+                    if (!event.data) return;
 
-        // 1. 打開教官登入視窗
-        if (event.data.action === 'openInstructorLogin') {
-            isLoginModalOpen.value = true;
-        }
-
-        // 2. 切換目前選取的學員
-        if (event.data.action === 'changeStudent' && event.data.studentName) {
-            selectedStudent.value = event.data.studentName;
-        }
-
-        // 3. 主系統直接傳送最新成員名單過來同步
-        if (event.data.action === 'syncStudentsList' && Array.isArray(event.data.students)) {
-            const formatted = event.data.students.map(s => typeof s === 'string' ? { name: s } : s);
-            usersList.value = formatted;
+                    // 1. 打開教官登入
+                    if (event.data.action === 'openInstructorLogin') {
+                        isLoginModalOpen.value = true;
+                    }
+                    // 2. 主系統叫我切換選取的學員
+                    if (event.data.action === 'changeStudent' && event.data.studentName) {
+                        selectedStudent.value = event.data.studentName;
+                    }
+                    // 3. 主系統傳送最新成員名單過來
+                    if (event.data.action === 'syncStudentsList' && Array.isArray(event.data.students)) {
+                        usersList.value = event.data.students.map(s => typeof s === 'string' ? { name: s } : s);
+                    }
+                });
+            });
+// ★ 加上這一段：監聽鎖頭按鈕，每次點開時都重新抓取定位
+    watch(isLoginModalOpen, (newVal) => {
+        if (newVal) {
+            checkGeofence();
         }
     });
-});
 // ==========================================
 // 圍籬與自動登出相關邏輯 (取代原本的 Geofence 區塊)
 // ==========================================
