@@ -2347,6 +2347,10 @@ const startTriageGame = (step) => {
 const instructorsList = computed(() => instructorsBank.value.length ? instructorsBank.value : []);
            const studentsList = computed(() => {
     let list = usersList.value.length ? [...usersList.value] : [];
+    
+    // 過濾掉沒有名字的無效資料，並去重
+    list = list.filter(u => u && u.name);
+
     // 只要 selectedStudent 有名字且不在列表內，自動強制補進選單第一項
     if (selectedStudent.value && !list.some(u => u.name === selectedStudent.value)) {
         list.unshift({ uid: 'ext_' + Date.now(), name: selectedStudent.value });
@@ -2356,13 +2360,29 @@ const instructorsList = computed(() => instructorsBank.value.length ? instructor
             const showToast = (msg, type = 'info') => { toast.value.msg = msg; toast.value.icon = type === 'success' ? 'fa-solid fa-circle-check' : (type === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-info-circle'); toast.value.color = type === 'success' ? '#34d399' : (type === 'warning' ? '#fbbf24' : '#60a5fa'); toast.value.show = true; setTimeout(() => toast.value.show = false, 2500); };
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
             const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
-
-            const fetchData = async () => { 
+const fetchData = async () => { 
     try { 
-        // 改用 onSnapshot，只要資料庫有新增成員，這裡就會自動即時更新
-        onSnapshot(collection(db, "passport_users"), (snap) => {
-            usersList.value = snap.docs.map(d => d.data());
+        // 1. 優先讀取主系統的 users 集合 (讀取主系統的 24 位成員)
+        onSnapshot(collection(db, "users"), (snap) => {
+            if (!snap.empty) {
+                usersList.value = snap.docs.map(d => {
+                    const data = d.data();
+                    return {
+                        ...data,
+                        // 自動相容各種欄位名稱 (name, displayName, userName)
+                        name: data.name || data.displayName || data.userName || d.id
+                    };
+                });
+            }
         });
+
+        // 2. 備用：若 passport_users 有資料也同步讀取
+        onSnapshot(collection(db, "passport_users"), (snap) => {
+            if (!snap.empty && usersList.value.length === 0) {
+                usersList.value = snap.docs.map(d => d.data());
+            }
+        });
+
         await fetchQuestions(true); 
         fetchCentralGallery(); 
         fetchTriageBank(); 
