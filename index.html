@@ -2348,46 +2348,67 @@ const instructorsList = computed(() => instructorsBank.value.length ? instructor
            const studentsList = computed(() => {
     let list = usersList.value.length ? [...usersList.value] : [];
     
-    // 過濾掉沒有名字的無效資料，並去重
-    list = list.filter(u => u && u.name);
+    // 1. 自動去重與過濾無效名字
+    const uniqueMap = new Map();
+    list.forEach(u => {
+        if (u && u.name && typeof u.name === 'string' && u.name.trim() !== '') {
+            uniqueMap.set(u.name.trim(), u);
+        }
+    });
+    let uniqueList = Array.from(uniqueMap.values());
 
-    // 只要 selectedStudent 有名字且不在列表內，自動強制補進選單第一項
-    if (selectedStudent.value && !list.some(u => u.name === selectedStudent.value)) {
-        list.unshift({ uid: 'ext_' + Date.now(), name: selectedStudent.value });
+    // 2. 如果目前學員名字不在選單中，自動補進第一項
+    if (selectedStudent.value && !uniqueMap.has(selectedStudent.value)) {
+        uniqueList.unshift({ uid: 'ext_student', name: selectedStudent.value });
     }
-    return list.length ? list : [{ uid: 'guest', name: '訪客' }];
+
+    return uniqueList.length ? uniqueList : [{ uid: 'guest', name: '訪客' }];
 });
             const showToast = (msg, type = 'info') => { toast.value.msg = msg; toast.value.icon = type === 'success' ? 'fa-solid fa-circle-check' : (type === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-info-circle'); toast.value.color = type === 'success' ? '#34d399' : (type === 'warning' ? '#fbbf24' : '#60a5fa'); toast.value.show = true; setTimeout(() => toast.value.show = false, 2500); };
             const showAppConfirm = (title, msg, cb) => appConfirm.value = { show: true, title, msg, onConfirm: () => { appConfirm.value.show = false; cb?.(); } };
             const formatTime = (iso) => iso ? `${iso.substr(5, 2)}/${iso.substr(8, 2)} ${iso.substr(11, 5)}` : '';
 const fetchData = async () => { 
     try { 
-        // 1. 優先讀取主系統的 users 集合 (讀取主系統的 24 位成員)
-        onSnapshot(collection(db, "users"), (snap) => {
-            if (!snap.empty) {
-                usersList.value = snap.docs.map(d => {
-                    const data = d.data();
-                    return {
+        const mergedUsersMap = new Map();
+
+        // 統一更新函式 (自動合併多個集合，不互相覆蓋)
+        const updateUsersFromSnap = (snap) => {
+            if (!snap || snap.empty) return;
+            snap.docs.forEach(d => {
+                const data = d.data();
+                const userName = data.name || data.displayName || data.userName || data.realName || d.id;
+                if (userName && typeof userName === 'string' && userName.trim() !== '' && userName !== '訪客') {
+                    mergedUsersMap.set(userName.trim(), {
                         ...data,
-                        // 自動相容各種欄位名稱 (name, displayName, userName)
-                        name: data.name || data.displayName || data.userName || d.id
-                    };
-                });
-            }
+                        name: userName.trim()
+                    });
+                }
+            });
+            usersList.value = Array.from(mergedUsersMap.values());
+        };
+
+        // 1. 監聽主系統 users 集合 (推播主控台 24 位成員)
+        onSnapshot(collection(db, "users"), updateUsersFromSnap, (err) => {
+            console.warn("users 集合讀取跳過:", err.message);
         });
 
-        // 2. 備用：若 passport_users 有資料也同步讀取
-        onSnapshot(collection(db, "passport_users"), (snap) => {
-            if (!snap.empty && usersList.value.length === 0) {
-                usersList.value = snap.docs.map(d => d.data());
-            }
+        // 2. 監聽 passport_users 集合 (考核系統專用成員)
+        onSnapshot(collection(db, "passport_users"), updateUsersFromSnap, (err) => {
+            console.warn("passport_users 集合讀取跳過:", err.message);
+        });
+
+        // 3. 監聽 members 集合 (主系統備用成員)
+        onSnapshot(collection(db, "members"), updateUsersFromSnap, (err) => {
+            console.warn("members 集合讀取跳過:", err.message);
         });
 
         await fetchQuestions(true); 
         fetchCentralGallery(); 
         fetchTriageBank(); 
         fetchInstructors(); 
-    } catch(e){} 
+    } catch(e){
+        console.error("fetchData 錯誤:", e);
+    } 
 };
             const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
             const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
