@@ -1011,7 +1011,29 @@
             <div class="bg-white px-5 py-4 flex justify-between items-center border-b"><h2 class="text-[20px] font-black text-slate-800 leading-tight pr-4 truncate">{{ activeItem?.name }}</h2><button @click="isMainModalOpen = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div>
             <div class="modal-body bg-slate-50 pt-4 flex flex-col gap-5">
                 <div v-if="activeItem?.equipment"><div @click="showEquipment = !showEquipment" class="flex items-center gap-2 cursor-pointer w-fit text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100"><i class="fa-solid fa-briefcase-medical text-sm"></i><span class="font-black text-xs">準備器材</span><i class="fa-solid fa-chevron-down text-[10px] transition-transform" :class="{'rotate-180': showEquipment}"></i></div><div v-show="showEquipment" class="mt-2 p-3 bg-white rounded-xl border text-[13px] font-bold text-slate-600 shadow-sm">{{ activeItem?.equipment }}</div></div>
-                <div class="space-y-2.5"><div v-for="(section, secIdx) in itemSections" :key="secIdx" @click="openSubModal(section)" class="bg-white border rounded-[14px] flex justify-between items-center cursor-pointer relative overflow-hidden"><div class="absolute left-0 top-0 bottom-0 w-1.5" :class="getSectionBarColor(section)"></div><div class="px-5 py-4 flex-1 flex items-center gap-2"><span class="font-bold text-[15px] text-slate-700">{{ section.title }}</span><span v-if="isSectionCompleted(section)" class="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black">已完成</span></div><div class="pr-5 text-slate-300"><i class="fa-solid fa-chevron-right text-xs"></i></div></div></div>
+                <div class="space-y-2.5">
+                    <div v-for="(section, secIdx) in itemSections" :key="secIdx" 
+                         @click="openSubModal(section)" 
+                         class="bg-white border rounded-[14px] flex justify-between items-center cursor-pointer relative overflow-hidden transition-all active:scale-[0.98]"
+                         :class="isSectionCompleted(section) ? 'border-emerald-200 bg-emerald-50/30' : (isSectionStarted(section) ? 'border-blue-200 bg-blue-50/30' : 'border-slate-200')">
+                        
+                        <div class="absolute left-0 top-0 bottom-0 w-1.5" :class="getSectionBarColor(section)"></div>
+                        
+                        <div class="px-5 py-4 flex-1 flex items-center justify-between gap-2">
+                            <span class="font-black text-[15px]" :class="isSectionCompleted(section) ? 'text-emerald-700' : (isSectionStarted(section) ? 'text-blue-700' : 'text-slate-700')">
+                                {{ section.title }}
+                            </span>
+                            
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-num px-2 py-0.5 rounded-full font-black" 
+                                      :class="isSectionCompleted(section) ? 'bg-emerald-500 text-white' : (isSectionStarted(section) ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-500')">
+                                    {{ getSectionProgressText(section) }}
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div v-if="activeItemHistory.length > 0" class="border-t pt-4 mt-2"><h5 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">歷史考核紀錄</h5><div class="space-y-2"><div v-for="(log, idx) in activeItemHistory" :key="'log-'+idx" class="flex justify-between items-center p-3 rounded-xl border bg-white" :class="log.status === 'Pass' ? 'border-emerald-100' : 'border-rose-100'"><div class="flex items-center gap-3"><i v-if="log.status === 'Pass'" class="fa-solid fa-circle-check text-emerald-500 text-2xl"></i><i v-else class="fa-solid fa-circle-xmark text-rose-500 text-2xl"></i><div><div class="flex items-center gap-2 mb-0.5"><span class="px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 text-[10px] font-black">教官: {{ log.instructor }}</span><span class="text-[9px] font-black px-1.5 py-0.5 rounded" :class="log.status === 'Pass' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'">{{ log.status === 'Pass' ? '通過' : '未過' }}</span></div><span class="text-[10px] text-slate-400 font-bold font-num"><i class="fa-regular fa-clock"></i> {{ formatTime(log.timestamp) }}</span></div></div><div class="text-2xl font-black font-num" :class="log.status === 'Pass' ? 'text-emerald-600' : 'text-rose-600'">{{ log.score }}</div></div></div></div>
             </div>
             <div class="bg-white border-t p-5 shrink-0 relative"><div class="flex justify-between items-center mb-4 px-1"><span class="text-sm font-black text-slate-500">目前得分 (95分及格)</span><span class="text-[32px] font-black font-num" :class="liveScore >= 95 ? 'text-emerald-600' : 'text-rose-600'">{{ liveScore }}</span></div><input v-model="evalRemarks" type="text" placeholder="輸入評語 (選填)..." class="w-full bg-white border rounded-[12px] px-4 py-3.5 text-[13px] font-bold outline-none mb-4 shadow-sm"><button @click="submitGrade" :disabled="isSubmitting" class="w-full py-3.5 bg-[#059669] text-white rounded-[12px] font-black text-base shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"><i v-if="!isSubmitting" class="fa-solid fa-save"></i><i v-else class="fa-solid fa-spinner fa-spin"></i>{{ isSubmitting ? '儲存中...' : '提交成績' }}</button><div class="text-center mt-3"><span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">正在評核: <span class="font-black text-emerald-600">{{ selectedStudent }}</span></span></div></div>
@@ -3295,6 +3317,18 @@ const addStepToGroup = (g) => g.steps.push({
             const moveGroup = (i, d) => { const a = editForm.value.groupedSections, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
             const moveStep = (g, i, d) => { const a = g.steps, t = i + d; if(t>=0 && t<a.length) [a[i], a[t]] = [a[t], a[i]]; };
 
+
+// --- 這裡是新增的進度計算邏輯 ---
+            const getSectionProgressText = (s) => {
+                const passed = s.steps.filter(st => gradingState.value[st.globalIdx]?.pass === true).length;
+                return `${passed} / ${s.steps.length}`;
+            };
+            const isSectionStarted = (s) => {
+                return s.steps.some(st => gradingState.value[st.globalIdx]?.pass !== null);
+            };
+
+
+
             return {
                 isLoading, isSubmitting, toast, appConfirm, isInstructorMode, isLoginModalOpen, loginForm, currentInstructorName, handleLogout, handleItemClick, isMainModalOpen, activeSubModal, slider, tabsScrollRef, activeTab, scrollToTab, onSliderScroll, selectedStudent, studentsList, instructorsList, displayCategories, existingCategories, totalProgress, totalCompletedCount, totalItemsCount, editorCategories, openMainModal, openSubModal, activeItem, itemSections, getSectionBarColor, isSectionCompleted, showEquipment, gradingState, setStepStatus, liveScore, evalRemarks, submitGrade, activeItemHistory, formatTime, isEditorOpen, editorMode, isEditorSaving, editForm, isNewCategory, newCategoryName, iconList, checkNewCategory, openEditorList, closeEditor, createNewItem, editItem, addGroup, addStepToGroup, removeGroup, removeStep, moveGroup, moveStep, moveItemOrder, moveCategoryOrder, saveItem, deleteItem, uploadStepImages, removeStepImage, cancelEdit,
                 gameState, startCardGame, stopGame, toggleTimer, finishGameSuccess, handleSubModalClose, isGameModalOpen, activeGameStep, isCurrentlyAdmin,deleteStepHistory,
@@ -3303,7 +3337,8 @@ const addStepToGroup = (g) => g.steps.push({
                 startAEDSequence, plugInConnector, deliverShock, submitAedResult, formatCprTime, dismissAudioWarning,isEcgModalOpen, activeEcgStep, ecgState, ecgContainerRef, ecgTargetsMap, getEcgLeadColor, startEcgGame, closeECGGame, selectECGLead, handleEcgBodyClick, checkEcgPlacement, submitECG,
       stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval, hasValidToken, directLogin,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState, editHistoryData, isHistoryModalOpen, selectedHistoryVersion, 
-triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager, saveTriageQuestion, deleteTriageQuestion, startTriageGame, answerTriage, submitTriageResult, closeTriageGame, triageSearchQuery, triageColorFilter, setTriageFilter, filteredTriageBank, editingTriageId, editTriageQuestion, cancelTriageEdit, getTriageColorName, getTriageColorText,
+triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager, saveTriageQuestion, deleteTriageQuestion, startTriageGame, answerTriage, submitTriageResult, closeTriageGame, triageSearchQuery, triageColorFilter, setTriageFilter, filteredTriageBank, editingTriageId, editTriageQuestion, cancelTriageEdit, getTriageColorName, getTriageColorText,getSectionProgressText, 
+            isSectionStarted,      
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
             };
         }
