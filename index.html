@@ -13,42 +13,8 @@
     <style>
 [v-cloak] { display: none !important; }
         :root { --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); --header-bg: #f1f5f9; }
-        /* 1. 鎖死最外層，禁止 iFrame 視窗被手機拉動 */
-html, body { 
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0; 
-    padding: 0; 
-    background: var(--header-bg); 
-    color: #1e293b; 
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif; 
-    overflow: hidden; 
-    touch-action: none;
-    overscroll-behavior: none; 
-    -webkit-font-smoothing: antialiased; 
-}
-        /* 2. 把 #app 改為絕對定位 (取代會變動的 100dvh) */
-#app { 
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%; 
-    height: 100%; 
-    max-width: 450px; 
-    margin: 0 auto; 
-    display: flex; 
-    flex-direction: column; 
-    background: #f1f5f9; 
-    box-shadow: 0 0 50px rgba(0,0,0,.08); 
-    overflow: hidden;
-}
+        html, body { margin: 0; padding: 0; background: var(--header-bg); color: #1e293b; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro TC", "PingFang TC", "Helvetica Neue", "Microsoft JhengHei", sans-serif; height: 100%; width: 100%; overflow: hidden; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
+        #app { width:100%; height:100dvh; max-width:450px; margin:0 auto; display:flex; flex-direction:column; position:relative; background:#f1f5f9; box-shadow:0 0 50px rgba(0,0,0,.08); }
         .font-num { font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.02em; }
         .list-card { background:#fff; border:1px solid #e2e8f0; border-radius:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,.02); overflow:hidden; }
 
@@ -2998,20 +2964,10 @@ const deleteInstructor = (id) => {
     await fetchGeofence(); // 加上 await，等設定抓回來
     checkGeofence();       // 再執行驗證
 });
-        onMounted(async () => { 
+          onMounted(async () => { 
                 fetchData(); 
                 await fetchGeofence(); 
                 checkGeofence();       
-
-                // ★【新增】手勢攔截器：大表模式下，只要摸到的不是表格內部，直接阻斷滑動拖曳
-                document.addEventListener('touchmove', (e) => {
-                    if (editorMode.value === 'console') {
-                        const isInsideTable = e.target.closest('.overflow-auto');
-                        if (!isInsideTable) {
-                            e.preventDefault();
-                        }
-                    }
-                }, { passive: false });
 
                 // 監聽主系統傳來的所有指令（打開登入、切換學員、同步名單）
                 window.addEventListener('message', (event) => {
