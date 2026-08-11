@@ -926,7 +926,9 @@
 
 <!-- 📊 跨成員成績主控台介面 -->
 <div v-if="editorMode === 'console'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
-    <div class="p-4 bg-white border-b space-y-3 shrink-0">
+    <!-- 加上平滑收合動畫與動態 class -->
+<div class="bg-white border-b shrink-0 transition-all duration-300 ease-in-out overflow-hidden"
+     :class="isConsoleHeaderCollapsed ? 'max-h-0 p-0 opacity-0 border-b-0' : 'max-h-[500px] p-4 space-y-3 opacity-100'">
         <h3 class="font-black text-slate-800"><i class="fa-solid fa-gauge-high text-sky-500 mr-2"></i>跨成員成績主控台</h3>
         <p class="text-xs text-slate-400 font-bold">點選多位學員或全選，可在下方成績矩陣中一覽狀態並直接點擊評分</p>
 
@@ -965,7 +967,8 @@
             </div>
 
            <!-- 矩陣成績滾動表格 (大標題不置頂，隨內容滑動) -->
-            <div class="flex-1 overflow-auto relative">
+            <!-- 綁定 handleConsoleScroll 滾動監聽 -->
+<div class="flex-1 overflow-auto relative" @scroll="handleConsoleScroll">
                 <table class="w-full border-separate border-spacing-0 text-left text-xs min-w-[500px]">
                     <!-- 表頭：僅學員姓名列固定於最上方 (sticky top-0) -->
                     <thead>
@@ -1972,7 +1975,38 @@ const toggleAllCategories = (collapse) => {
     });
 };
 
+// 📊 主控台頂部收合狀態與滾動紀錄
+const isConsoleHeaderCollapsed = ref(false);
+let consoleLastScrollTop = 0;
+let accumulatedUpScroll = 0; // 累積向上滑動的距離
 
+// 監聽矩陣表格滾動
+const handleConsoleScroll = (e) => {
+    const currentScrollTop = e.target.scrollTop;
+
+    // 防止 iOS 頂部彈跳 (Bounce) 誤判
+    if (currentScrollTop < 0) return;
+
+    const delta = currentScrollTop - consoleLastScrollTop;
+
+    if (delta > 0) {
+        // 【往下滑動】：重置向上累積距離，超過頂部 30px 就收合標頭
+        accumulatedUpScroll = 0;
+        if (currentScrollTop > 30) {
+            isConsoleHeaderCollapsed.value = true;
+        }
+    } else if (delta < 0) {
+        // 【往上滑動】：累積往上的滑動距離
+        accumulatedUpScroll += Math.abs(delta);
+
+        // 觸發條件：必須「累積往上滑動超過 80px」（用力滑），或者「已經滑回最頂端」
+        if (accumulatedUpScroll > 250 || currentScrollTop <= 10) {
+            isConsoleHeaderCollapsed.value = false;
+        }
+    }
+
+    consoleLastScrollTop = Math.max(0, currentScrollTop);
+};
 // 📊 主控台專用變數與監聽器
 const consoleSelectedUsers = ref([]); // 儲存多選學員清單
 const allRecords = ref([]);           // 儲存全體成績紀錄
@@ -3703,7 +3737,8 @@ triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager
     openConsole, selectAllConsoleUsers, clearAllConsoleUsers, filteredConsoleItems,
     getConsoleRecordScore, getConsoleRecordStatusText, getConsoleRecordStyle,consoleGroupedCategories,
     openQuickGrade, saveConsoleQuickGrade,openStandardGradeFromConsole, collapsedCats,
-    toggleCatCollapse,
+    toggleCatCollapse,isConsoleHeaderCollapsed,
+    handleConsoleScroll,
     isCatCollapsed,
     toggleAllCategories,    
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
