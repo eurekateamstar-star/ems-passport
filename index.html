@@ -34,14 +34,14 @@
         .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top-left-radius: 32px; border-top-right-radius: 32px; z-index: 1001; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; margin: 0 auto; padding: 24px; padding-bottom: calc(24px + var(--safe-bottom)); box-shadow: 0 -10px 40px rgba(0,0,0,0.15); }
         .bottom-sheet.active { transform: translateY(0); }
 
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .centered-modal { background: #f8fafc; width: 100%; max-width: 420px; max-height: 90dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         .modal-overlay.active .centered-modal { transform: scale(1); }
         .modal-body { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
         .modal-body::-webkit-scrollbar { display: none; }
 
-        .sub-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        .sub-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1050; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
         .sub-modal-overlay.active { opacity: 1; pointer-events: auto; }
         .sub-centered-modal { background: #ffffff; width: 100%; max-width: 380px; max-height: 85dvh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .sub-modal-overlay.active .sub-centered-modal { transform: translateY(0); }
@@ -441,7 +441,9 @@
                 <button @click="openGeofenceSettings" class="py-4 rounded-2xl bg-rose-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-location-dot"></i> 電子圍籬</button>
                 <button @click="openTriageManager" class="py-4 rounded-2xl bg-purple-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-truck-medical"></i> 檢傷題庫</button>
 <button @click="openInstructorManager" class="py-4 rounded-2xl bg-orange-600 text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2 col-span-2"><i class="fa-solid fa-user-tie"></i> 教官與管理者名單</button>
-            </div>
+      <!-- 📊 新增：跨成員成績主控台按鈕 -->
+<button @click="openConsole" class="py-4 rounded-2xl bg-[#0ea5e9] text-white font-black text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2"><i class="fa-solid fa-gauge-high"></i> 跨成員成績主控台</button>      
+</div>
 
             <div v-for="(cat, catIdx) in editorCategories" :key="'edit-cat-'+cat.id" class="space-y-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-1">
@@ -921,9 +923,130 @@
                 <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm shadow-md">完成並返回</button>
             </div>
         </div>
+
+<!-- 📊 跨成員成績主控台介面 -->
+<div v-if="editorMode === 'console'" class="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
+    <div class="p-4 bg-white border-b space-y-3 shrink-0">
+        <h3 class="font-black text-slate-800"><i class="fa-solid fa-gauge-high text-sky-500 mr-2"></i>跨成員成績主控台</h3>
+        <p class="text-xs text-slate-400 font-bold">點選多位學員或全選，可在下方成績矩陣中一覽狀態並直接點擊評分</p>
+
+        <!-- 學員複選區 -->
+        <div class="bg-slate-50 p-3 rounded-xl border space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-[11px] font-black text-slate-500">選擇要一覽成績的學員</span>
+                <div class="flex gap-1.5">
+                    <button @click="selectAllConsoleUsers" class="px-2 py-1 bg-white border rounded text-[10px] font-black text-slate-600 active:bg-slate-100 transition-colors">全選</button>
+                    <button @click="clearAllConsoleUsers" class="px-2 py-1 bg-white border rounded text-[10px] font-black text-slate-600 active:bg-slate-100 transition-colors">清空</button>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-[110px] overflow-y-auto p-1.5 bg-white rounded-lg border border-slate-100">
+                <label v-for="user in studentsList" :key="user.name" class="flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-black cursor-pointer transition-all"
+                       :class="consoleSelectedUsers.includes(user.name) ? 'bg-sky-50 border-sky-300 text-sky-700 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-500'">
+                    <input type="checkbox" :value="user.name" v-model="consoleSelectedUsers" class="hidden">
+                    {{ user.name }}
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 矩陣成績表區塊 -->
+    <div class="flex-1 overflow-hidden flex flex-col p-4 min-h-0">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
+       <!-- 搜尋項目與全部展開/折疊按鈕 -->
+            <div class="p-2.5 bg-slate-50 border-b flex justify-between items-center gap-2 shrink-0">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input v-model="consoleSearchQuery" type="text" placeholder="搜尋項目關鍵字..." class="w-full bg-white border rounded-lg pl-8 pr-3 py-1.5 text-xs font-bold outline-none shadow-sm">
+                </div>
+                <div class="flex gap-1 shrink-0">
+                    <button @click="toggleAllCategories(false)" class="px-2 py-1 bg-white border rounded text-[10px] font-black text-slate-600 hover:bg-slate-100 transition-colors">全部展開</button>
+                    <button @click="toggleAllCategories(true)" class="px-2 py-1 bg-white border rounded text-[10px] font-black text-slate-600 hover:bg-slate-100 transition-colors">全部折疊</button>
+                </div>
+            </div>
+
+           <!-- 矩陣成績滾動表格 (大標題不置頂，隨內容滑動) -->
+            <div class="flex-1 overflow-auto relative">
+                <table class="w-full border-separate border-spacing-0 text-left text-xs min-w-[500px]">
+                    <!-- 表頭：僅學員姓名列固定於最上方 (sticky top-0) -->
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 font-black">
+                            <!-- 左上角「項目名稱」：雙向固定 (Top-0 + Left-0，z-40 圖層) -->
+                            <th class="p-3 sticky top-0 left-0 z-40 bg-slate-100 border-b border-r border-slate-200 w-[140px] min-w-[140px] shadow-[2px_2px_4px_rgba(0,0,0,0.06)]">
+                                項目名稱
+                            </th>
+                            <!-- 各學員名字：固定 Top-0 (z-30 圖層) -->
+                            <th v-for="name in consoleSelectedUsers" :key="name" 
+                                class="p-3 text-center border-b border-r border-slate-200 min-w-[90px] sticky top-0 bg-slate-100 z-30 shadow-[0_2px_4px_rgba(0,0,0,0.06)]">
+                                {{ name }}
+                            </th>
+                            <th v-if="consoleSelectedUsers.length === 0" 
+                                class="p-8 text-slate-400 text-center border-b border-slate-200 sticky top-0 bg-slate-100 z-30">
+                                請先在上方勾選成員
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <!-- 9 大類別資料分組 -->
+                    <tbody v-for="cat in consoleGroupedCategories" :key="cat.name">
+                        <!-- 🏷️ 大類別標題列 (移除 top 垂直固定，改為跟著滑動；僅保留 left-0 橫向固定) -->
+                        <tr @click="toggleCatCollapse(cat.name)" 
+                            class="bg-slate-200 cursor-pointer hover:bg-slate-300/80 transition-colors">
+                            <td :colspan="1 + (consoleSelectedUsers.length || 1)" 
+                                class="p-2.5 px-3 font-black text-slate-800 text-xs sticky left-0 z-10 bg-slate-200 border-b border-slate-300 shadow-sm">
+                                <!-- 內部文字 sticky left-3，向右滑動時分類名稱依然停在左側可見 -->
+                                <div class="sticky left-3 flex items-center justify-between max-w-[320px]">
+                                    <span class="flex items-center gap-2">
+                                        <i :class="['fa-solid', cat.icon]" class="text-indigo-600"></i>
+                                        <span>{{ cat.name }}</span>
+                                        <span class="text-[10px] bg-white/90 text-slate-700 px-2 py-0.5 rounded-full font-bold border border-slate-300 shadow-sm">
+                                            {{ cat.items.length }} 項
+                                        </span>
+                                    </span>
+                                    <!-- 右側展開 / 收合狀態圖示 -->
+                                    <div class="flex items-center gap-1.5 text-slate-600 text-[11px] font-bold ml-3">
+                                        <span>{{ isCatCollapsed(cat.name) ? '展開' : '收合' }}</span>
+                                        <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" 
+                                           :class="{ 'rotate-180': !isCatCollapsed(cat.name) }"></i>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- 📋 該類別底下的細項列表 -->
+                        <template v-if="!isCatCollapsed(cat.name)">
+                            <tr v-for="item in cat.items" :key="item.name" class="hover:bg-slate-50">
+                                <!-- 左側「項目名稱」：橫向 Left-0 固定 (z-20 圖層) -->
+                                <td class="p-3 font-bold text-slate-700 sticky left-0 bg-white z-20 border-b border-r border-slate-200 w-[140px] min-w-[140px] truncate shadow-[2px_0_4px_rgba(0,0,0,0.04)]">
+                                    {{ item.name }}
+                                </td>
+                                <!-- 各學員對應的成績格 (一般圖層 z-0) -->
+                                <td v-for="name in consoleSelectedUsers" :key="name" 
+                                    @click="openStandardGradeFromConsole(name, item.name)"
+                                    class="p-1.5 text-center border-b border-r border-slate-100 min-w-[90px] cursor-pointer">
+                                    <div class="py-1.5 px-1 rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center"
+                                         :class="getConsoleRecordStyle(name, item.name)">
+                                        <span class="font-black font-num text-xs">{{ getConsoleRecordScore(name, item.name) }}</span>
+                                        <span class="text-[8px] font-bold opacity-80 mt-0.5">{{ getConsoleRecordStatusText(name, item.name) }}</span>
+                                    </div>
+                                </td>
+                                <!-- 未勾選學員時的占位提示 -->
+                                <td v-if="consoleSelectedUsers.length === 0" class="p-8 text-center text-slate-400 border-b border-slate-100">
+                                    請在上方勾選學員以載入矩陣成績
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部按鈕 -->
+    <div class="p-4 bg-white border-t shrink-0 z-40 relative">
+        <button @click="editorMode = 'list'" class="w-full py-3 bg-slate-800 text-white rounded-xl font-black text-sm shadow-md">返回管理中心</button>
+    </div>
 </div>
-
-
+</div>
     <!-- 審核制教官登入 -->
     <div class="modal-overlay" :class="{ active: isLoginModalOpen }" @click.self="loginStatus === 'idle' ? isLoginModalOpen = false : null">
         <div class="centered-modal bg-white">
@@ -1257,6 +1380,46 @@
         </div>
     </div>
 
+<!-- 📊 快速評分彈窗 (跨成員主控台專用) -->
+<div class="sub-modal-overlay" style="z-index: 1100;" :class="{ active: isConsoleQuickGradeOpen }" @click.self="isConsoleQuickGradeOpen = false">
+    <div class="sub-centered-modal max-w-[340px]">
+        <div class="bg-slate-800 text-white px-5 py-4 border-b flex justify-between items-center">
+            <h4 class="font-black text-sm"><i class="fa-solid fa-pen-to-square mr-1 text-sky-400"></i> 主控台快速評分</h4>
+            <button @click="isConsoleQuickGradeOpen = false" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-5 space-y-4 bg-white text-slate-800">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span class="text-[9px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-black uppercase">選取學員</span>
+                <p class="text-base font-black text-slate-800 mt-1">{{ consoleQuickGradeData.student }}</p>
+                
+                <span class="text-[9px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-black uppercase mt-3 inline-block">考核項目</span>
+                <p class="text-xs font-bold text-slate-500 mt-1">{{ consoleQuickGradeData.item }}</p>
+            </div>
+            
+            <div class="space-y-1">
+                <label class="text-[11px] font-black text-slate-500">成績分數 (0 - 100)</label>
+                <input type="number" min="0" max="100" v-model.number="consoleQuickGradeData.score" class="w-full bg-slate-50 border rounded-lg px-3 py-2 text-sm font-num font-black outline-none">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] font-black text-slate-500">判定狀態</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button @click="consoleQuickGradeData.status = 'Pass'" class="py-2.5 rounded-lg font-black text-xs border transition-all"
+                            :class="consoleQuickGradeData.status === 'Pass' ? 'bg-emerald-50 text-emerald-600 border-emerald-400' : 'bg-slate-50 text-slate-400 border-slate-200'">🟢 通過 (Pass)</button>
+                    <button @click="consoleQuickGradeData.status = 'Fail'" class="py-2.5 rounded-lg font-black text-xs border transition-all"
+                            :class="consoleQuickGradeData.status === 'Fail' ? 'bg-rose-50 text-rose-600 border-rose-400' : 'bg-slate-50 text-slate-400 border-slate-200'">🔴 未過 (Fail)</button>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 bg-slate-50 border-t flex gap-2">
+            <button @click="isConsoleQuickGradeOpen = false" class="flex-1 py-2.5 bg-slate-200 text-slate-600 rounded-lg font-black text-xs">取消</button>
+            <button @click="saveConsoleQuickGrade" class="flex-1 py-2.5 bg-blue-600 text-white rounded-lg font-black text-xs shadow-md">儲存評分</button>
+        </div>
+    </div>
+</div>
+
+
+
     <!-- 遊戲挑戰全螢幕 (整合抽卡與 BVM) -->
  <div class="game-fullscreen-modal" :class="{ active: isGameModalOpen || isBvmModalOpen || isAedModalOpen || isEcgModalOpen || isTriageModalOpen }">
     <!-- 在 AED 區塊的下方，或者 Game 區塊的下方，加入這整段 template -->
@@ -1354,6 +1517,14 @@
                 <button v-else @click="resetBvmState" class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">重新開始挑戰</button>
             </footer>
         </template>
+
+
+
+
+
+
+
+
    <!-- 12 導程心電圖遊戲 UI (專業擬真全螢幕版) -->
     <template v-if="isEcgModalOpen">
         <!-- 移除黑色半透明背景，改為佔滿全螢幕的白色/淺灰底色 -->
@@ -1782,6 +1953,38 @@
             const slider = ref(null), tabsScrollRef = ref(null), activeTab = ref(0), isLoading = ref(true), isSubmitting = ref(false), isInstructorMode = ref(false), isLoginModalOpen = ref(false);
             const loginForm = ref({ name: '', password: '' }), currentInstructorName = ref(''), isEditorOpen = ref(false), editorMode = ref('list'), isEditorSaving = ref(false), isNewCategory = ref(false), newCategoryName = ref(''), sessionUploadedUrls = ref([]);
             const editForm = ref({ originalDocId: null, category: '', name: '', icon: 'fa-clipboard-list', locked: false, equipment: '', orderWeight: 99, catOrderWeight: 999, groupedSections: [] });
+
+// 📁 類別折疊狀態 Map
+const collapsedCats = ref({});
+
+// 點擊切換單一類別折疊/展開
+const toggleCatCollapse = (catName) => {
+    collapsedCats.value[catName] = !collapsedCats.value[catName];
+};
+
+// 檢查類別是否處於折疊狀態
+const isCatCollapsed = (catName) => !!collapsedCats.value[catName];
+
+// 一鍵全部展開 / 全部折疊
+const toggleAllCategories = (collapse) => {
+    displayCategories.value.forEach(cat => {
+        collapsedCats.value[cat.name] = collapse;
+    });
+};
+
+
+// 📊 主控台專用變數與監聽器
+const consoleSelectedUsers = ref([]); // 儲存多選學員清單
+const allRecords = ref([]);           // 儲存全體成績紀錄
+const consoleSearchQuery = ref('');   // 表格項目搜尋關鍵字
+let allRecordsUnsubscribe = null;     // 全體成績監聽物件
+
+// 快速打分數專用狀態
+// 快速打分數專用狀態 (拆分為獨立變數，確保 ESM 模式下 100% 觸發彈窗響應)
+const isConsoleQuickGradeOpen = ref(false);
+const consoleQuickGradeData = ref({ student: '', item: '', score: 100, status: 'Pass' });
+
+
 
 // ▼ 新增這三個變數，處理題目修改紀錄 ▼
 const editHistoryData = ref([]); 
@@ -2450,6 +2653,151 @@ const fetchData = async () => {
             const fetchQuestions = async (re = false) => { const qSnap = await getDocs(collection(db, "passport_questions")); rawQuestions.value = qSnap.docs.map(d => ({ id: d.id, ...d.data() })); if(re) updateEditorCategories(); };
             const fetchCentralGallery = () => { onSnapshot(collection(db, "passport_gallery"), (snap) => { centralGallery.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); }); };
 
+
+// 開啟主控台並啟動資料即時監聽
+const openConsole = () => {
+    editorMode.value = 'console';
+    // 若尚未監聽全體資料，則建立全域即時監聽，使成績能跨裝置自動更新
+    if (!allRecordsUnsubscribe) {
+        allRecordsUnsubscribe = onSnapshot(collection(db, "passport_records"), (snap) => {
+            allRecords.value = snap.docs.map(d => d.data());
+        });
+    }
+};
+
+// 複選學員控制：全選與清空
+const selectAllConsoleUsers = () => {
+    consoleSelectedUsers.value = studentsList.value.map(u => u.name).filter(n => n !== '訪客');
+};
+const clearAllConsoleUsers = () => {
+    consoleSelectedUsers.value = [];
+};
+
+// 計算項目搜尋
+const filteredConsoleItems = computed(() => {
+    if (!consoleSearchQuery.value) return rawQuestions.value;
+    const q = consoleSearchQuery.value.toLowerCase();
+    return rawQuestions.value.filter(item => item.name.toLowerCase().includes(q));
+});
+
+
+// 📊 主控台按 9 大類別分組與排序邏輯
+const consoleGroupedCategories = computed(() => {
+    const q = consoleSearchQuery.value ? consoleSearchQuery.value.toLowerCase() : '';
+    const result = [];
+
+    // 依照系統內建的 9 大類別順序進行分類
+    displayCategories.value.forEach(cat => {
+        // 篩選屬於該類別且符合關鍵字的項目
+        const matchingItems = cat.items.filter(item => {
+            if (!q) return true;
+            return item.name.toLowerCase().includes(q) || cat.name.toLowerCase().includes(q);
+        });
+
+        if (matchingItems.length > 0) {
+            result.push({
+                name: cat.name,
+                icon: cat.icon || 'fa-folder',
+                items: matchingItems
+            });
+        }
+    });
+
+    return result;
+});
+
+// 讀取某位學員於特定項目的紀錄
+const getConsoleRecord = (userName, itemName) => {
+    return allRecords.value.find(r => r.userName === userName && r.itemName === itemName);
+};
+const getConsoleRecordScore = (userName, itemName) => {
+    const r = getConsoleRecord(userName, itemName);
+    return r ? `${r.score} 分` : '--';
+};
+const getConsoleRecordStatusText = (userName, itemName) => {
+    const r = getConsoleRecord(userName, itemName);
+    if (!r) return '未考核';
+    return r.status === 'Pass' ? '通過' : '未過';
+};
+const getConsoleRecordStyle = (userName, itemName) => {
+    const r = getConsoleRecord(userName, itemName);
+    if (!r) return 'bg-slate-50 text-slate-400 border border-slate-100';
+    return r.status === 'Pass' 
+        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+        : 'bg-rose-50 text-rose-700 border border-rose-200';
+};
+
+// 👇 請將 openStandardGradeFromConsole 貼在這裡 👇
+const openStandardGradeFromConsole = (studentName, itemName) => {
+    // 1. 自動將當前考核對象切換為點擊的學員
+    selectedStudent.value = studentName;
+    
+    // 2. 搜尋對應項目的完整細項題目
+    const item = rawQuestions.value.find(q => q.name === itemName);
+    if (!item) {
+        showToast("找不到該項目的題目詳細資料", "warning");
+        return;
+    }
+    
+    // 3. 開啟標準考核主彈窗
+    openMainModal(item);
+};
+
+// 開啟快速打分數視窗 (改用獨立 ref 控制)
+const openQuickGrade = (studentName, itemName) => {
+    const record = getConsoleRecord(studentName, itemName);
+    consoleQuickGradeData.value = {
+        student: studentName,
+        item: itemName,
+        score: record ? record.score : 100,
+        status: record ? record.status : 'Pass'
+    };
+    isConsoleQuickGradeOpen.value = true;
+};
+
+// 快速評分儲存 (改用獨立 ref 儲存)
+const saveConsoleQuickGrade = async () => {
+    const qg = consoleQuickGradeData.value;
+    if (qg.score < 0 || qg.score > 100) {
+        showToast("分數範圍必須在 0 到 100 之間", "warning");
+        return;
+    }
+    
+    try {
+        const docId = `${qg.student}_${qg.item}`;
+        const past = getConsoleRecord(qg.student, qg.item);
+        let hist = past && past.history ? [...past.history] : [];
+        hist.push({
+            status: qg.status,
+            score: qg.score,
+            instructor: currentInstructorName.value || '主控台快速評分',
+            timestamp: new Date().toISOString()
+        });
+
+        const existingDetails = past ? past.details : '[]';
+
+        // 寫入 Firebase
+        await setDoc(doc(db, "passport_records", docId), {
+            userName: qg.student,
+            itemName: qg.item,
+            status: qg.status,
+            score: qg.score,
+            instructor: currentInstructorName.value || '主控台快速評分',
+            remarks: past ? (past.remarks || '') : '',
+            details: existingDetails,
+            history: hist,
+            timestamp: new Date().toISOString()
+        });
+
+        isConsoleQuickGradeOpen.value = false;
+        showToast("快速評分儲存成功", "success");
+    } catch(e) {
+        showToast("儲存失敗", "warning");
+    }
+};
+
+
+
 // --- ▼ 將這段貼在 fetchCentralGallery 的正下方 ▼ ---
 const fetchTriageBank = () => {
     onSnapshot(collection(db, "passport_triage"), (snap) => {
@@ -2954,31 +3302,37 @@ const totalItemsCount = computed(() => displayCategories.value.reduce((s, a) => 
                 }
             });
 
-            const openMainModal = (item) => {
-                activeItem.value = item; const secMap = {}; let gIdx = 0;
-                item.steps?.forEach(s => { const t = s.subItem || item.name; if(!secMap[t]) secMap[t] = { title: t, steps: [] }; secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); });
-                itemSections.value = Object.values(secMap); 
+           const openMainModal = (item) => {
+    activeItem.value = item; 
+    const secMap = {}; let gIdx = 0;
+    item.steps?.forEach(s => { 
+        const t = s.subItem || item.name; 
+        if(!secMap[t]) secMap[t] = { title: t, steps: [] }; 
+        secMap[t].steps.push({ ...s, globalIdx: gIdx++ }); 
+    });
+    itemSections.value = Object.values(secMap); 
 
-                // ★ 修改 1：初始化時加入 ecgDetails: null
-                gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: 0, bvmLogs: [], ecgDetails: null }));
+    gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: 0, bvmLogs: [], ecgDetails: null }));
 
-                const r = studentRecords.value.find(rec => rec.itemName === item.name);
+    // ★ 優先讀取單人紀錄，若剛切換學員則同步讀取全體主控台紀錄
+    const r = studentRecords.value.find(rec => rec.itemName === item.name)
+           || allRecords.value.find(rec => rec.userName === selectedStudent.value && rec.itemName === item.name);
 
-                // ★ 修改 2：從資料庫讀取 (JSON.parse) 時，記得把 ecgDetails 抓回來
-                if(r?.details) try { 
-                    const p = JSON.parse(r.details); 
-                    p.forEach((d, idx) => { 
-                        if(gradingState.value[idx]) { 
-                            gradingState.value[idx].pass = d.pass; 
-                            gradingState.value[idx].timeUsed = d.timeUsed || 0; 
-                            gradingState.value[idx].bvmLogs = d.bvmLogs || []; 
-                            gradingState.value[idx].triageDetails = d.triageDetails || null; // <== 關鍵在這裡
-                        } 
-                    }); 
-                } catch(e){}
+    if(r?.details) try { 
+        const p = JSON.parse(r.details); 
+        p.forEach((d, idx) => { 
+            if(gradingState.value[idx]) { 
+                gradingState.value[idx].pass = d.pass; 
+                gradingState.value[idx].timeUsed = d.timeUsed || 0; 
+                gradingState.value[idx].bvmLogs = d.bvmLogs || []; 
+                gradingState.value[idx].triageDetails = d.triageDetails || null;
+            } 
+        }); 
+    } catch(e){}
 
-                evalRemarks.value = r?.remarks || ''; isMainModalOpen.value = true;
-            };
+    evalRemarks.value = r?.remarks || ''; 
+    isMainModalOpen.value = true;
+};
 
             const openSubModal = (s) => activeSubModal.value = s;
             const setStepStatus = (step, isPass) => { const idx = step.globalIdx; const state = gradingState.value[idx]; state.pass = state.pass === isPass ? null : isPass; };
@@ -3098,7 +3452,14 @@ const handleSubModalClose = () => {
             const deleteFromCentralGallery = async (img) => { showAppConfirm('刪除圖片', '確定從圖庫移除此照片？', async () => { try { await deleteObject(storageRef(storage, img.path)); await deleteDoc(doc(db, "passport_gallery", img.id)); } catch(e){} }); };
 
             const openEditorList = () => { updateEditorCategories(); editorMode.value = 'list'; isEditorOpen.value = true; };
-            const closeEditor = () => editorMode.value === 'edit' ? showAppConfirm('離開', '捨棄更動？', () => { cleanupUnsaved(); isEditorOpen.value = false; }) : isEditorOpen.value = false;
+            const closeEditor = () => {
+    // 📊 新增：若有開啟主控台監聽，離開時自動註銷
+    if (allRecordsUnsubscribe) {
+        allRecordsUnsubscribe();
+        allRecordsUnsubscribe = null;
+    }
+    editorMode.value === 'edit' ? showAppConfirm('離開', '捨棄更動？', () => { cleanupUnsaved(); isEditorOpen.value = false; }) : isEditorOpen.value = false;
+};
             const cancelEdit = async () => { await cleanupUnsaved(); editorMode.value = 'list'; };
             const cleanupUnsaved = async () => { if(sessionUploadedUrls.value.length) { await Promise.all(sessionUploadedUrls.value.map(u => deleteImageFromStorage(u))); sessionUploadedUrls.value = []; } };
             const deleteImageFromStorage = async (u) => { try { const p = decodeURIComponent(u).match(/\/o\/(.+?)(\?|$)/)?.[1]; if(p) await deleteObject(storageRef(storage, p)); } catch(e){} };
@@ -3338,7 +3699,13 @@ const addStepToGroup = (g) => g.steps.push({
       stepTimers, startStepTimer, stopStepTimer, resetStepTimer, loginStatus, isSelectedUserAdmin, pendingRequests, handleAdminLogin, requestLogin, cancelLoginRequest, handleApproval, hasValidToken, directLogin,
                 isBvmModalOpen, activeBvmStep, bvmState, startBvmGame, handleBvmSqueeze, submitBvmResult, stopBvmGame, resetBvmState, editHistoryData, isHistoryModalOpen, selectedHistoryVersion, 
 triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager, saveTriageQuestion, deleteTriageQuestion, startTriageGame, answerTriage, submitTriageResult, closeTriageGame, triageSearchQuery, triageColorFilter, setTriageFilter, filteredTriageBank, editingTriageId, editTriageQuestion, cancelTriageEdit, getTriageColorName, getTriageColorText,getSectionProgressText, 
-            isSectionStarted,      
+            isSectionStarted,consoleSelectedUsers, allRecords, consoleSearchQuery, isConsoleQuickGradeOpen, consoleQuickGradeData,
+    openConsole, selectAllConsoleUsers, clearAllConsoleUsers, filteredConsoleItems,
+    getConsoleRecordScore, getConsoleRecordStatusText, getConsoleRecordStyle,consoleGroupedCategories,
+    openQuickGrade, saveConsoleQuickGrade,openStandardGradeFromConsole, collapsedCats,
+    toggleCatCollapse,
+    isCatCollapsed,
+    toggleAllCategories,    
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
             };
         }
