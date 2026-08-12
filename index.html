@@ -2101,7 +2101,7 @@ const MATRIX_AXIS_LOCK_THRESHOLD = 6; // px，超過這個距離才判定方向
 
 // 只有「用力快速」往上滑（捲動位置快速往回減少）才展開頂部選單；
 // 這是直接從真實觸控取樣算出的瞬時速度，不受瀏覽器 scroll 事件節流/合併影響，慢滑、停留在頂端都不會誤觸發
-const CONSOLE_EXPAND_VELOCITY = 2.6; // px/ms，數字越大代表要滑得越快越用力才會展開
+const CONSOLE_EXPAND_VELOCITY = 1.1; // px/ms，數字越大代表要滑得越快越用力才會展開
 
 const handleMatrixTouchStart = (e) => {
     if (!e.touches || e.touches.length !== 1) return;
