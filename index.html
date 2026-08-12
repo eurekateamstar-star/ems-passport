@@ -988,6 +988,15 @@
 
     <!-- 矩陣成績表區塊 -->
     <div class="flex-1 overflow-hidden flex flex-col p-4 min-h-0 relative">
+        
+        <!-- 當選單收合時，在中央上方顯示一個可愛的浮動標籤按鈕，隨時可點擊展開 -->
+        <button v-if="isConsoleHeaderCollapsed" 
+                @click="isConsoleHeaderCollapsed = false"
+                class="absolute -top-1 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-3 py-1 rounded-b-xl text-[11px] font-black shadow-md flex items-center gap-1.5 active:scale-95 transition-all border-x border-b border-slate-700">
+            <i class="fa-solid fa-users text-sky-400"></i>
+            <span>展開學員選單</span>
+            <i class="fa-solid fa-chevron-down text-[9px]"></i>
+        </button>
 
         <div v-if="consoleViewMode === 'matrix'" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
             <!-- 搜尋項目與全部展開/折疊按鈕 -->
@@ -2073,7 +2082,7 @@ const toggleAllCategories = (collapse) => {
 const isConsoleHeaderCollapsed = ref(false);
 let consoleLastScrollTop = 0;
 
-// 監聽矩陣表格滾動：只負責「往下滑超過 60px 就收合」；展開改由下方觸控速度判斷，避免單純滑到頂端就跳出來
+// 監聽矩陣表格滾動 (只自動收合，絕不自動彈出)
 const handleConsoleScroll = (e) => {
     const currentScrollTop = e.target.scrollTop;
 
@@ -2083,7 +2092,11 @@ const handleConsoleScroll = (e) => {
     // 【往下滑動超過 60px】：自動收合選單
     if (currentScrollTop > 60 && currentScrollTop > consoleLastScrollTop) {
         isConsoleHeaderCollapsed.value = true;
-    }
+    } 
+
+    // ★ 徹底刪除往上滑動的自動觸發條件！
+    // 這樣在表格中無論怎麼往上滑、滑多快，選單都「100% 不會跳出來打擾」。
+    // 只有當您親自點擊表格上方的「展開學員選單 ▾」按鈕時才會展開。
 
     consoleLastScrollTop = currentScrollTop;
 };
@@ -2096,12 +2109,8 @@ const handleConsoleScroll = (e) => {
 // 在觸控開始的極短距離內判斷主要拖曳方向，鎖定該方向直到手指放開，
 // 並將 scrollTop / scrollLeft 限制在有效範圍內，杜絕彈性回彈與雙向漂移。
 const matrixScrollRef = ref(null);
-const matrixTouchState = { active: false, startX: 0, startY: 0, startScrollLeft: 0, startScrollTop: 0, lockAxis: null, lastVelT: 0, lastVelScrollTop: 0 };
+const matrixTouchState = { active: false, startX: 0, startY: 0, startScrollLeft: 0, startScrollTop: 0, lockAxis: null };
 const MATRIX_AXIS_LOCK_THRESHOLD = 6; // px，超過這個距離才判定方向
-
-// 只有「用力快速」往上滑（捲動位置快速往回減少）才展開頂部選單；
-// 這是直接從真實觸控取樣算出的瞬時速度，不受瀏覽器 scroll 事件節流/合併影響，慢滑、停留在頂端都不會誤觸發
-const CONSOLE_EXPAND_VELOCITY = 1.1; // px/ms，數字越大代表要滑得越快越用力才會展開
 
 const handleMatrixTouchStart = (e) => {
     if (!e.touches || e.touches.length !== 1) return;
@@ -2114,8 +2123,6 @@ const handleMatrixTouchStart = (e) => {
     matrixTouchState.startScrollLeft = el.scrollLeft;
     matrixTouchState.startScrollTop = el.scrollTop;
     matrixTouchState.lockAxis = null;
-    matrixTouchState.lastVelT = e.timeStamp || performance.now();
-    matrixTouchState.lastVelScrollTop = el.scrollTop;
 };
 
 const handleMatrixTouchMove = (e) => {
@@ -2137,18 +2144,6 @@ const handleMatrixTouchMove = (e) => {
     if (matrixTouchState.lockAxis === 'y') {
         const maxTop = el.scrollHeight - el.clientHeight;
         el.scrollTop = Math.max(0, Math.min(maxTop, matrixTouchState.startScrollTop - dy));
-
-        // 直接用這次真實觸控取樣計算瞬時捲動速度，判斷是否為「用力」往上滑
-        const now = e.timeStamp || performance.now();
-        const dt = now - matrixTouchState.lastVelT;
-        if (dt > 0) {
-            const scrollVelocity = (el.scrollTop - matrixTouchState.lastVelScrollTop) / dt; // 負值=快速往頂端捲動
-            if (scrollVelocity < -CONSOLE_EXPAND_VELOCITY) {
-                isConsoleHeaderCollapsed.value = false;
-            }
-        }
-        matrixTouchState.lastVelT = now;
-        matrixTouchState.lastVelScrollTop = el.scrollTop;
     } else {
         const maxLeft = el.scrollWidth - el.clientWidth;
         el.scrollLeft = Math.max(0, Math.min(maxLeft, matrixTouchState.startScrollLeft - dx));
