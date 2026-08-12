@@ -986,7 +986,8 @@
            <!-- 矩陣成績滾動表格 (大標題不置頂，隨內容滑動) -->
             <!-- 綁定 handleConsoleScroll 滾動監聽 -->
 <!-- 加上 overscroll-contain 與 touch-action，限制滑動力量不外洩 -->
-<div class="flex-1 overflow-auto relative overscroll-contain" style="overscroll-behavior: contain; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch;" @scroll="handleConsoleScroll">
+<!-- ★ 加上 ref="matrixScrollRef" 與手動軸向鎖定的觸控事件，解決斜向拖曳時整張表格漂移、無法鎖定方向的問題 -->
+<div ref="matrixScrollRef" class="flex-1 overflow-auto relative overscroll-contain" style="overscroll-behavior: contain; touch-action: none; -webkit-overflow-scrolling: touch;" @scroll="handleConsoleScroll" @touchstart="handleMatrixTouchStart" @touchmove="handleMatrixTouchMove" @touchend="handleMatrixTouchEnd" @touchcancel="handleMatrixTouchEnd">
                 <table class="w-full border-separate border-spacing-0 text-left text-xs min-w-[500px]">
                     <!-- 表頭：僅學員姓名列固定於最上方 (sticky top-0) -->
                     <thead>
@@ -2016,6 +2017,62 @@ const handleConsoleScroll = (e) => {
 
     consoleLastScrollTop = currentScrollTop;
 };
+
+// ★★★ 主控台矩陣表格：手動軸向鎖定觸控滾動 ★★★
+// 問題：容器同時允許水平與垂直觸控滾動 (touch-action: pan-x pan-y)，
+// 斜向滑動時瀏覽器會同時捲動兩個方向，加上原生彈性回彈(elastic bounce)，
+// 造成整張表格（含固定的「項目名稱」欄與表頭）看起來一直漂移、無法鎖定。
+// 解法：改為完全手動控制捲動 (CSS touch-action: none)，
+// 在觸控開始的極短距離內判斷主要拖曳方向，鎖定該方向直到手指放開，
+// 並將 scrollTop / scrollLeft 限制在有效範圍內，杜絕彈性回彈與雙向漂移。
+const matrixScrollRef = ref(null);
+const matrixTouchState = { active: false, startX: 0, startY: 0, startScrollLeft: 0, startScrollTop: 0, lockAxis: null };
+const MATRIX_AXIS_LOCK_THRESHOLD = 6; // px，超過這個距離才判定方向
+
+const handleMatrixTouchStart = (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const el = matrixScrollRef.value;
+    if (!el) return;
+    const t = e.touches[0];
+    matrixTouchState.active = true;
+    matrixTouchState.startX = t.clientX;
+    matrixTouchState.startY = t.clientY;
+    matrixTouchState.startScrollLeft = el.scrollLeft;
+    matrixTouchState.startScrollTop = el.scrollTop;
+    matrixTouchState.lockAxis = null;
+};
+
+const handleMatrixTouchMove = (e) => {
+    if (!matrixTouchState.active || !e.touches || e.touches.length !== 1) return;
+    const el = matrixScrollRef.value;
+    if (!el) return;
+    const t = e.touches[0];
+    const dx = t.clientX - matrixTouchState.startX;
+    const dy = t.clientY - matrixTouchState.startY;
+
+    if (!matrixTouchState.lockAxis) {
+        if (Math.abs(dx) < MATRIX_AXIS_LOCK_THRESHOLD && Math.abs(dy) < MATRIX_AXIS_LOCK_THRESHOLD) return;
+        matrixTouchState.lockAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+
+    // 一旦鎖定方向，接管這次觸控手勢，阻止瀏覽器原生的雙向/彈性捲動
+    e.preventDefault();
+
+    if (matrixTouchState.lockAxis === 'y') {
+        const maxTop = el.scrollHeight - el.clientHeight;
+        el.scrollTop = Math.max(0, Math.min(maxTop, matrixTouchState.startScrollTop - dy));
+    } else {
+        const maxLeft = el.scrollWidth - el.clientWidth;
+        el.scrollLeft = Math.max(0, Math.min(maxLeft, matrixTouchState.startScrollLeft - dx));
+    }
+};
+
+const handleMatrixTouchEnd = () => {
+    matrixTouchState.active = false;
+    matrixTouchState.lockAxis = null;
+};
+// ★★★ 結束新增區塊 ★★★
+
 // 📊 主控台專用變數與監聽器
 const consoleSelectedUsers = ref([]); // 儲存多選學員清單
 const allRecords = ref([]);           // 儲存全體成績紀錄
@@ -3749,7 +3806,8 @@ triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager
     toggleCatCollapse,isConsoleHeaderCollapsed,
     handleConsoleScroll,
     isCatCollapsed,
-    toggleAllCategories,    
+    toggleAllCategories,
+    matrixScrollRef, handleMatrixTouchStart, handleMatrixTouchMove, handleMatrixTouchEnd,
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
             };
         }
