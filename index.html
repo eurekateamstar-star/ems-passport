@@ -2812,22 +2812,21 @@ const fetchData = async () => {
             usersList.value = Array.from(mergedUsersMap.values());
         };
 
-        // 1. 監聽主系統 users 集合 (推播主控台 24 位成員)
+        // 1. 監聽使用者相關集合 (非阻塞)
         onSnapshot(collection(db, "users"), updateUsersFromSnap, (err) => {
             console.warn("users 集合讀取跳過:", err.message);
         });
 
-        // 2. 監聽 passport_users 集合 (考核系統專用成員)
         onSnapshot(collection(db, "passport_users"), updateUsersFromSnap, (err) => {
             console.warn("passport_users 集合讀取跳過:", err.message);
         });
 
-        // 3. 監聽 members 集合 (主系統備用成員)
         onSnapshot(collection(db, "members"), updateUsersFromSnap, (err) => {
             console.warn("members 集合讀取跳過:", err.message);
         });
 
-        await fetchQuestions(true); 
+        // 2. 改為非阻塞並行載入，讓瀏覽器同時發送請求，縮短總等候時間
+        fetchQuestions(true); 
         fetchCentralGallery(); 
         fetchTriageBank(); 
         fetchInstructors(); 
@@ -3127,12 +3126,16 @@ const deleteInstructor = (id) => {
     await fetchGeofence(); // 加上 await，等設定抓回來
     checkGeofence();       // 再執行驗證
 });
-          onMounted(async () => { 
+         onMounted(() => { 
+                // 1. 立即執行背景資料載入 (不阻塞畫面初始化)
                 fetchData(); 
-                await fetchGeofence(); 
-                checkGeofence();       
 
-                // 監聽主系統傳來的所有指令（打開登入、切換學員、同步名單）
+                // 2. 異步取得電子圍籬設定，隨後執行位置驗證，避免阻塞畫面初次渲染
+                fetchGeofence().then(() => {
+                    checkGeofence();       
+                });
+
+                // 3. 監聽主系統傳來的所有指令（打開登入、切換學員、同步名單）
                 window.addEventListener('message', (event) => {
                     if (!event.data) return;
 
