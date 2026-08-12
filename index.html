@@ -937,9 +937,21 @@
                 <span>收合選單</span> <i class="fa-solid fa-chevron-up text-[10px]"></i>
             </button>
         </div>
-        <p class="text-xs text-slate-400 font-bold">點選多位學員或全選，可在下方成績矩陣中一覽狀態並直接點擊評分</p>
+        <p class="text-xs text-slate-400 font-bold">{{ consoleViewMode === 'matrix' ? '點選多位學員或全選，可在下方成績矩陣中一覽狀態並直接點擊評分' : '選擇一個考核項目，可在下方看到所有學員的成績並直接點擊評分' }}</p>
 
-        <!-- 學員複選區 -->
+        <!-- 📊 模式切換：依學員矩陣 / 依項目評分 -->
+        <div class="flex bg-slate-100 rounded-xl p-1 gap-1">
+            <button @click="consoleViewMode = 'matrix'" class="flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                    :class="consoleViewMode === 'matrix' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-400'">
+                <i class="fa-solid fa-table-cells"></i> 依學員矩陣
+            </button>
+            <button @click="consoleViewMode = 'byItem'" class="flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5"
+                    :class="consoleViewMode === 'byItem' ? 'bg-white text-sky-600 shadow-sm' : 'text-slate-400'">
+                <i class="fa-solid fa-clipboard-check"></i> 依項目評分
+            </button>
+        </div>
+
+        <!-- 學員複選區 (兩種模式皆可使用，用來決定下方要看哪些人) -->
         <div class="bg-slate-50 p-3 rounded-xl border space-y-3">
             <div class="flex justify-between items-center">
                 <span class="text-[11px] font-black text-slate-500">選擇要一覽成績的學員</span>
@@ -956,21 +968,28 @@
                 </label>
             </div>
         </div>
+
+        <!-- 項目選擇提示區 (僅「依項目評分」模式額外顯示；實際搜尋/選擇列表在下方主體區) -->
+        <div v-if="consoleViewMode === 'byItem'" class="bg-slate-50 p-3 rounded-xl border">
+            <div v-if="!byItemSelectedItemName" class="flex items-center gap-2 text-[11px] font-black text-slate-500">
+                <i class="fa-solid fa-arrow-down text-slate-400"></i>
+                請在下方選擇一個考核項目
+            </div>
+            <div v-else class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <span class="text-[9px] font-black text-slate-400 uppercase">目前選擇項目</span>
+                    <p class="font-black text-slate-800 text-[13px] truncate">{{ byItemSelectedItemName }}</p>
+                </div>
+                <button @click="byItemSelectedItemName = ''" class="px-3 py-1.5 rounded-lg bg-white border text-[10px] font-black text-slate-600 shrink-0">切換項目</button>
+            </div>
+        </div>
     </div>
+
 
     <!-- 矩陣成績表區塊 -->
     <div class="flex-1 overflow-hidden flex flex-col p-4 min-h-0 relative">
-        
-        <!-- 當選單收合時，在中央上方顯示一個可愛的浮動標籤按鈕，隨時可點擊展開 -->
-        <button v-if="isConsoleHeaderCollapsed" 
-                @click="isConsoleHeaderCollapsed = false"
-                class="absolute -top-1 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-3 py-1 rounded-b-xl text-[11px] font-black shadow-md flex items-center gap-1.5 active:scale-95 transition-all border-x border-b border-slate-700">
-            <i class="fa-solid fa-users text-sky-400"></i>
-            <span>展開學員選單</span>
-            <i class="fa-solid fa-chevron-down text-[9px]"></i>
-        </button>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
+        <div v-if="consoleViewMode === 'matrix'" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
             <!-- 搜尋項目與全部展開/折疊按鈕 -->
             <div class="p-2.5 bg-slate-50 border-b flex justify-between items-center gap-2 shrink-0">
                 <div class="relative flex-1">
@@ -1060,6 +1079,61 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- 📊 依項目評分模式：先選一個考核項目，再列出所有學員的成績並可直接點擊評分 -->
+        <div v-else class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
+
+            <!-- 尚未選擇項目：顯示可搜尋的項目清單 -->
+            <template v-if="!byItemSelectedItemName">
+                <div class="p-2.5 bg-slate-50 border-b shrink-0">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input v-model="byItemSearchQuery" type="text" placeholder="搜尋考核項目關鍵字..." class="w-full bg-white border rounded-lg pl-8 pr-3 py-1.5 text-xs font-bold outline-none shadow-sm">
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-3">
+                    <div v-for="cat in byItemFilteredCategories" :key="'byitem-cat-'+cat.name">
+                        <div class="text-[11px] font-black text-indigo-600 flex items-center gap-1.5 mb-1.5 px-1">
+                            <i :class="['fa-solid', cat.icon]"></i> {{ cat.name }}
+                        </div>
+                        <div class="space-y-1.5">
+                            <button v-for="item in cat.items" :key="'byitem-'+item.name" @click="byItemSelectedItemName = item.name"
+                                    class="w-full text-left px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50 font-bold text-[13px] text-slate-700 active:scale-[0.98] transition-all hover:bg-slate-100 flex items-center justify-between gap-2">
+                                <span class="truncate">{{ item.name }}</span>
+                                <i class="fa-solid fa-chevron-right text-slate-300 text-[10px] shrink-0"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="byItemFilteredCategories.length === 0" class="text-center py-10 text-slate-400 font-bold text-sm">找不到符合的項目</div>
+                </div>
+            </template>
+
+            <!-- 已選擇項目：列出全體學員的成績，點擊即可評分 -->
+            <template v-else>
+                <div class="p-3 bg-slate-50 border-b flex items-center justify-between gap-2 shrink-0">
+                    <div class="min-w-0">
+                        <div class="text-[9px] font-black text-slate-400 uppercase">正在評分項目</div>
+                        <div class="font-black text-slate-800 text-[14px] truncate">{{ byItemSelectedItemName }}</div>
+                    </div>
+                    <button @click="byItemSelectedItemName = ''" class="px-3 py-1.5 rounded-lg bg-white border text-[11px] font-black text-slate-600 shrink-0">切換項目</button>
+                </div>
+                <div class="flex-1 overflow-y-auto divide-y divide-slate-100">
+                    <div v-for="name in consoleSelectedUsers" :key="'byitem-user-'+name"
+                         @click="openStandardGradeFromConsole(name, byItemSelectedItemName)"
+                         class="p-3 flex items-center justify-between gap-3 cursor-pointer active:bg-slate-50 transition-colors">
+                        <span class="font-bold text-slate-700 text-[13px]">{{ name }}</span>
+                        <div class="flex items-center gap-2">
+                            <div class="py-1 px-2.5 rounded-lg flex flex-col items-center justify-center" :class="getConsoleRecordStyle(name, byItemSelectedItemName)">
+                                <span class="font-black font-num text-xs">{{ getConsoleRecordScore(name, byItemSelectedItemName) }}</span>
+                                <span class="text-[8px] font-bold opacity-80">{{ getConsoleRecordStatusText(name, byItemSelectedItemName) }}</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                        </div>
+                    </div>
+                    <div v-if="consoleSelectedUsers.length === 0" class="text-center py-10 text-slate-400 font-bold text-sm">請在上方勾選學員</div>
+                </div>
+            </template>
         </div>
     </div>
 
@@ -1999,7 +2073,7 @@ const toggleAllCategories = (collapse) => {
 const isConsoleHeaderCollapsed = ref(false);
 let consoleLastScrollTop = 0;
 
-// 監聽矩陣表格滾動 (只自動收合，絕不自動彈出)
+// 監聽矩陣表格滾動：只負責「往下滑超過 60px 就收合」；展開改由下方觸控速度判斷，避免單純滑到頂端就跳出來
 const handleConsoleScroll = (e) => {
     const currentScrollTop = e.target.scrollTop;
 
@@ -2009,11 +2083,7 @@ const handleConsoleScroll = (e) => {
     // 【往下滑動超過 60px】：自動收合選單
     if (currentScrollTop > 60 && currentScrollTop > consoleLastScrollTop) {
         isConsoleHeaderCollapsed.value = true;
-    } 
-
-    // ★ 徹底刪除往上滑動的自動觸發條件！
-    // 這樣在表格中無論怎麼往上滑、滑多快，選單都「100% 不會跳出來打擾」。
-    // 只有當您親自點擊表格上方的「展開學員選單 ▾」按鈕時才會展開。
+    }
 
     consoleLastScrollTop = currentScrollTop;
 };
@@ -2026,8 +2096,12 @@ const handleConsoleScroll = (e) => {
 // 在觸控開始的極短距離內判斷主要拖曳方向，鎖定該方向直到手指放開，
 // 並將 scrollTop / scrollLeft 限制在有效範圍內，杜絕彈性回彈與雙向漂移。
 const matrixScrollRef = ref(null);
-const matrixTouchState = { active: false, startX: 0, startY: 0, startScrollLeft: 0, startScrollTop: 0, lockAxis: null };
+const matrixTouchState = { active: false, startX: 0, startY: 0, startScrollLeft: 0, startScrollTop: 0, lockAxis: null, lastVelT: 0, lastVelScrollTop: 0 };
 const MATRIX_AXIS_LOCK_THRESHOLD = 6; // px，超過這個距離才判定方向
+
+// 只有「用力快速」往上滑（捲動位置快速往回減少）才展開頂部選單；
+// 這是直接從真實觸控取樣算出的瞬時速度，不受瀏覽器 scroll 事件節流/合併影響，慢滑、停留在頂端都不會誤觸發
+const CONSOLE_EXPAND_VELOCITY = 2.6; // px/ms，數字越大代表要滑得越快越用力才會展開
 
 const handleMatrixTouchStart = (e) => {
     if (!e.touches || e.touches.length !== 1) return;
@@ -2040,6 +2114,8 @@ const handleMatrixTouchStart = (e) => {
     matrixTouchState.startScrollLeft = el.scrollLeft;
     matrixTouchState.startScrollTop = el.scrollTop;
     matrixTouchState.lockAxis = null;
+    matrixTouchState.lastVelT = e.timeStamp || performance.now();
+    matrixTouchState.lastVelScrollTop = el.scrollTop;
 };
 
 const handleMatrixTouchMove = (e) => {
@@ -2061,6 +2137,18 @@ const handleMatrixTouchMove = (e) => {
     if (matrixTouchState.lockAxis === 'y') {
         const maxTop = el.scrollHeight - el.clientHeight;
         el.scrollTop = Math.max(0, Math.min(maxTop, matrixTouchState.startScrollTop - dy));
+
+        // 直接用這次真實觸控取樣計算瞬時捲動速度，判斷是否為「用力」往上滑
+        const now = e.timeStamp || performance.now();
+        const dt = now - matrixTouchState.lastVelT;
+        if (dt > 0) {
+            const scrollVelocity = (el.scrollTop - matrixTouchState.lastVelScrollTop) / dt; // 負值=快速往頂端捲動
+            if (scrollVelocity < -CONSOLE_EXPAND_VELOCITY) {
+                isConsoleHeaderCollapsed.value = false;
+            }
+        }
+        matrixTouchState.lastVelT = now;
+        matrixTouchState.lastVelScrollTop = el.scrollTop;
     } else {
         const maxLeft = el.scrollWidth - el.clientWidth;
         el.scrollLeft = Math.max(0, Math.min(maxLeft, matrixTouchState.startScrollLeft - dx));
@@ -2803,6 +2891,27 @@ const consoleGroupedCategories = computed(() => {
         }
     });
 
+    return result;
+});
+
+// 📊 依項目評分模式：選擇模式狀態、項目搜尋、被選定的項目
+const consoleViewMode = ref('matrix'); // 'matrix' = 依學員矩陣, 'byItem' = 依項目評分
+const byItemSearchQuery = ref('');
+const byItemSelectedItemName = ref('');
+
+// 依項目模式的項目搜尋清單 (與矩陣模式的搜尋互相獨立，邏輯與 consoleGroupedCategories 相同)
+const byItemFilteredCategories = computed(() => {
+    const q = byItemSearchQuery.value ? byItemSearchQuery.value.toLowerCase() : '';
+    const result = [];
+    displayCategories.value.forEach(cat => {
+        const matchingItems = cat.items.filter(item => {
+            if (!q) return true;
+            return item.name.toLowerCase().includes(q) || cat.name.toLowerCase().includes(q);
+        });
+        if (matchingItems.length > 0) {
+            result.push({ name: cat.name, icon: cat.icon || 'fa-folder', items: matchingItems });
+        }
+    });
     return result;
 });
 
@@ -3808,6 +3917,7 @@ triageBank, newTriageQuestion, isTriageModalOpen, triageState, openTriageManager
     isCatCollapsed,
     toggleAllCategories,
     matrixScrollRef, handleMatrixTouchStart, handleMatrixTouchMove, handleMatrixTouchEnd,
+    consoleViewMode, byItemSearchQuery, byItemSelectedItemName, byItemFilteredCategories,
                 activeHistoryData, showBvmHistory, instructorsBank, newInstructor, editingInstructorId, openInstructorManager, saveInstructor, editInstructor, cancelInstructorEdit, deleteInstructor
             };
         }
