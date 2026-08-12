@@ -1019,14 +1019,14 @@
                 <table class="w-full border-separate border-spacing-0 text-left text-xs min-w-[320px]">
                     <!-- 表頭：僅學員姓名列固定於最上方 (sticky top-0) -->
                     <thead>
-                      <tr class="bg-slate-100 text-slate-600 font-black">
+                     <tr class="bg-slate-100 text-slate-600 font-black">
    <!-- 左上角「項目名稱」 -->
-<th class="p-1 sticky top-0 left-0 z-40 bg-slate-100 border-b border-r border-slate-200 w-[75px] min-w-[75px] shadow-[2px_2px_4px_rgba(0,0,0,0.06)] text-center text-[10px]">
+<th class="py-3 px-1 sticky top-0 left-0 z-40 bg-slate-100 border-b border-r border-slate-200 w-[75px] min-w-[75px] shadow-[2px_2px_4px_rgba(0,0,0,0.06)] text-center text-[10px]">
     項目
 </th>
 <!-- 各學員名字 -->
 <th v-for="name in consoleSelectedUsers" :key="name" 
-    class="p-1 text-center border-b border-r border-slate-200 w-[62px] min-w-[62px] sticky top-0 bg-slate-100 z-30 shadow-[0_2px_4px_rgba(0,0,0,0.06)] text-[10px] truncate">
+    class="py-3 px-1 text-center border-b border-r border-slate-200 w-[62px] min-w-[62px] sticky top-0 bg-slate-100 z-30 shadow-[0_2px_4px_rgba(0,0,0,0.06)] text-[10px] truncate">
     {{ name }}
 </th>
                             <th v-if="consoleSelectedUsers.length === 0" 
@@ -1067,17 +1067,18 @@
                           <tr v-for="item in cat.items" :key="item.name" class="hover:bg-slate-50">
     <!-- 左側「項目名稱」：橫向 Left-0 固定 (z-20 圖層) -->
     <!-- 左側「項目名稱」 -->
-<td class="p-1 font-bold text-slate-700 sticky left-0 bg-white z-20 border-b border-r border-slate-200 w-[75px] min-w-[75px] shadow-[2px_0_4px_rgba(0,0,0,0.04)] text-[10px] leading-tight break-all whitespace-normal">
+<!-- 左側「項目名稱」 -->
+<td class="py-3 px-1.5 font-bold text-slate-700 sticky left-0 bg-white z-20 border-b border-r border-slate-200 w-[75px] min-w-[75px] shadow-[2px_0_4px_rgba(0,0,0,0.04)] text-[10px] leading-tight break-all whitespace-normal">
     {{ item.name }}
 </td>
 <!-- 各學員對應的成績格 -->
 <td v-for="name in consoleSelectedUsers" :key="name" 
     @click="openStandardGradeFromConsole(name, item.name)"
     class="p-0.5 text-center border-b border-r border-slate-100 w-[62px] min-w-[62px] cursor-pointer">
-    <div class="py-1 px-0.5 rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center"
+    <div class="py-2.5 px-0.5 rounded-lg transition-all active:scale-95 flex flex-col items-center justify-center animate-fade-in"
          :class="getConsoleRecordStyle(name, item.name)">
-        <span class="font-black font-num text-[10px] leading-none">{{ getConsoleRecordScore(name, item.name) }}</span>
-        <span class="text-[8px] font-bold opacity-80 mt-0.5 scale-90 origin-center leading-none whitespace-nowrap">{{ getConsoleRecordStatusText(name, item.name) }}</span>
+        <span class="font-black font-num text-[11px] leading-none">{{ getConsoleRecordScore(name, item.name) }}</span>
+        <span class="text-[8px] font-bold opacity-80 mt-1 scale-90 origin-center leading-none whitespace-nowrap">{{ getConsoleRecordStatusText(name, item.name) }}</span>
     </div>
 </td>
                                 <!-- 未勾選學員時的占位提示 -->
@@ -3520,8 +3521,9 @@ const totalItemsCount = computed(() => displayCategories.value.reduce((s, a) => 
     gradingState.value = new Array(gIdx).fill(null).map(() => ({ pass: null, timeUsed: 0, bvmLogs: [], ecgDetails: null }));
 
     // ★ 優先讀取單人紀錄，若剛切換學員則同步讀取全體主控台紀錄
-    const r = studentRecords.value.find(rec => rec.itemName === item.name)
-           || allRecords.value.find(rec => rec.userName === selectedStudent.value && rec.itemName === item.name);
+    // ★ 優先讀取單人紀錄，並嚴格比對姓名防範殘留，若尚未載入則從主控台全體紀錄 fallback 讀取
+const r = studentRecords.value.find(rec => rec.userName === selectedStudent.value && rec.itemName === item.name)
+       || allRecords.value.find(rec => rec.userName === selectedStudent.value && rec.itemName === item.name);
 
     if(r?.details) try { 
         const p = JSON.parse(r.details); 
