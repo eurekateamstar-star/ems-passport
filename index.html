@@ -50,7 +50,7 @@
 .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; width: 100%; margin: 0 auto; overflow: hidden; touch-action: none; overscroll-behavior: none; }
         .full-screen-modal.active { transform: translateY(0); }
 
-        .game-fullscreen-modal {
+    .game-fullscreen-modal {
     position: fixed;
     inset: 0;
     height: 100dvh;
@@ -65,14 +65,17 @@
     opacity: 0;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
-    pointer-events: none; /* 預設關閉點擊 */
+    /* 這裡加入下面這行 */
+    visibility: hidden; 
+    pointer-events: none;
 }
 
-/* ★ 補回這個區塊，這是讓按鈕能點擊的關鍵 ★ */
 .game-fullscreen-modal.active {
     transform: translateY(0);
     opacity: 1;
-    pointer-events: auto; /* 開啟點擊 */
+    /* 這裡加入下面這兩行，強制開啟點擊 */
+    visibility: visible;
+    pointer-events: auto;
 }
 
         .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
@@ -1588,13 +1591,11 @@
 
                     <div class="bvm-container" 
                          :class="{ 'is-squeezing': bvmState.isSqueezing }"
-                         @mousedown="bvmState.isSqueezing = true" 
-                         @mouseup="bvmState.isSqueezing = false" 
-                         @mouseleave="bvmState.isSqueezing = false"
-                         @touchstart="bvmState.isSqueezing = true" 
-                         @touchend="bvmState.isSqueezing = false"
-                         @touchcancel="bvmState.isSqueezing = false"
-                         @click="handleBvmSqueeze">
+                         @touchstart.prevent="bvmState.isSqueezing = true; handleBvmSqueeze($event)" 
+                         @touchend.prevent="bvmState.isSqueezing = false"
+                         @mousedown="bvmState.isSqueezing = true; handleBvmSqueeze($event)"
+                         @mouseup="bvmState.isSqueezing = false"
+                         @mouseleave="bvmState.isSqueezing = false">
                         <!-- 前端組件：層級修正重點區 -->
                         <div class="bvm-front-group">
                             <div class="bvm-mask-assembly">
@@ -1641,17 +1642,20 @@
                     </div>
                 </div>
             </div>
-<!-- 加入 z-index 與 flex-shrink 確保 Footer 不會被壓縮或遮擋 -->
-<footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2100]" 
+<!-- 加入 shrink-0 避免按鈕被擠壓，加入 relative z-50 確保在最上層 -->
+<footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-50" 
         style="padding-bottom: calc(1.5rem + var(--safe-bottom));">
+    
+    <!-- 加入 cursor-pointer 強制手機識別為可點擊元件 -->
     <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" 
             @click="submitBvmResult" 
-            class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95">
+            class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 cursor-pointer">
         提交 BVM 考核結果
     </button>
+    
     <button v-else 
             @click="resetBvmState" 
-            class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">
+            class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest cursor-pointer">
         重新開始挑戰
     </button>
 </footer>
@@ -3600,7 +3604,7 @@ const r = studentRecords.value.find(rec => rec.userName === selectedStudent.valu
                 if(bvmState.value.timerInterval) clearInterval(bvmState.value.timerInterval);
                 bvmState.value = { isStarted: false, count: 0, lastTime: 0, lastInterval: 0, lastIntervalIsPass: true, passCount: 0, feedback: '', results: [], bvmLogs: [], totalElapsed: 0, timerInterval: null, isSqueezing: false }; 
             };
-            const handleBvmSqueeze = () => {
+           const handleBvmSqueeze = (e) => {
                 const now = Date.now(); const s = bvmState.value;
                 if (!s.isStarted) { 
                     s.isStarted = true; s.count = 1; s.lastTime = now; s.feedback = '開始吹氣！'; 
