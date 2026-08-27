@@ -53,8 +53,7 @@
         .game-fullscreen-modal {
     position: fixed;
     inset: 0;
-    /* 修改或確認以下這幾行 */
-    height: 100dvh; /* 使用動態視窗高度，防止被瀏覽器網址列推擠 */
+    height: 100dvh;
     width: 100%;
     background: #0f172a;
     z-index: 2000;
@@ -66,6 +65,14 @@
     opacity: 0;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
+    pointer-events: none; /* 預設關閉點擊 */
+}
+
+/* ★ 補回這個區塊，這是讓按鈕能點擊的關鍵 ★ */
+.game-fullscreen-modal.active {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto; /* 開啟點擊 */
 }
 
         .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
@@ -1634,10 +1641,19 @@
                     </div>
                 </div>
             </div>
-<!-- 修改處：加入 padding-bottom 以及針對安全區域的變數 -->
-<footer class="px-6 pt-6 bg-slate-900 border-t border-white/10" style="padding-bottom: calc(1.5rem + var(--safe-bottom));">
-    <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" @click="submitBvmResult" class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95">提交 BVM 考核結果</button>
-    <button v-else @click="resetBvmState" class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">重新開始挑戰</button>
+<!-- 加入 z-index 與 flex-shrink 確保 Footer 不會被壓縮或遮擋 -->
+<footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2100]" 
+        style="padding-bottom: calc(1.5rem + var(--safe-bottom));">
+    <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" 
+            @click="submitBvmResult" 
+            class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95">
+        提交 BVM 考核結果
+    </button>
+    <button v-else 
+            @click="resetBvmState" 
+            class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">
+        重新開始挑戰
+    </button>
 </footer>
         </template>
 
