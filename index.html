@@ -50,8 +50,23 @@
 .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; width: 100%; margin: 0 auto; overflow: hidden; touch-action: none; overscroll-behavior: none; }
         .full-screen-modal.active { transform: translateY(0); }
 
-        .game-fullscreen-modal { position: fixed; inset: 0; background: #0f172a; z-index: 2000; display: flex; flex-direction: column; max-width: 450px; margin: 0 auto; transform: translateY(100%); opacity: 0; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
-        .game-fullscreen-modal.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .game-fullscreen-modal {
+    position: fixed;
+    inset: 0;
+    /* 修改或確認以下這幾行 */
+    height: 100dvh; /* 使用動態視窗高度，防止被瀏覽器網址列推擠 */
+    width: 100%;
+    background: #0f172a;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    max-width: 450px;
+    margin: 0 auto;
+    transform: translateY(100%);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
 
         .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
         @keyframes cardPop { 0% { opacity:0; transform: scale(0.5) translateY(20px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
