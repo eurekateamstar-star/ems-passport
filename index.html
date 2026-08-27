@@ -1617,9 +1617,9 @@
                     </div>
                 </div>
             </div>
-<!-- padding-bottom 設為 5.5rem，貼近但不遮擋 -->
-            <footer class="px-6 pt-4 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2200]" 
-                    style="padding-bottom: calc(5.5rem + var(--safe-bottom));">
+<!-- 將 padding-bottom 縮小到 3.5rem (約 56px)，讓按鈕貼近下方導航欄 -->
+            <footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2200]" 
+                    style="padding-bottom: calc(3.5rem + var(--safe-bottom));">
                 <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" 
                         @click="submitBvmResult" 
                         class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-[18px] shadow-xl active:scale-95 cursor-pointer">
