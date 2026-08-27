@@ -1570,21 +1570,21 @@
                 </div>
             </header>
 
-           <!-- 壓縮內容間距，增加 min-h-0 防止擠壓 -->
-            <div class="flex-1 flex flex-col items-center justify-center py-2 px-6 min-h-0 overflow-y-auto">
+          <!-- 恢復正常上下間距 py-6 -->
+            <div class="flex-1 flex flex-col items-center justify-around py-6 px-6 min-h-0 overflow-y-auto">
                 
-                <!-- 狀態指示器 - 縮減邊距 -->
-                <div class="text-center mb-2">
-                    <p class="text-[10px] font-black uppercase tracking-[0.2em] mb-1" :class="bvmState.isStarted ? 'text-cyan-500' : 'text-slate-500'">{{ bvmState.isStarted ? 'In Progress' : 'Ready' }}</p>
+                <!-- 狀態指示器 -->
+                <div class="text-center">
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] mb-1" :class="bvmState.isStarted ? 'text-cyan-500' : 'text-slate-500'">{{ bvmState.isStarted ? 'Challenge in progress' : 'Ready' }}</p>
                     <div class="flex items-baseline gap-2 justify-center">
-                        <span class="text-5xl font-black font-num text-white leading-none">{{ bvmState.count }}</span>
-                        <span class="text-lg font-black text-slate-500">/ {{ activeBvmStep?.bvmGoal }}</span>
+                        <span class="text-6xl font-black font-num text-white leading-none">{{ bvmState.count }}</span>
+                        <span class="text-xl font-black text-slate-500">/ {{ activeBvmStep?.bvmGoal }}</span>
                     </div>
                 </div>
 
-                <!-- BVM 球體 - 縮小比例至 85% 並縮減上下間距 -->
-                <div class="relative flex items-center justify-center my-2 scale-[0.85]">
-                    <div v-if="bvmState.feedback" class="absolute -top-12 font-black text-xl uppercase tracking-widest animate-bounce text-center whitespace-nowrap z-[100]" 
+                <!-- BVM 球體 - 恢復 100% 比例 -->
+                <div class="relative flex items-center justify-center my-4">
+                    <div v-if="bvmState.feedback" class="absolute -top-16 font-black text-2xl uppercase tracking-widest animate-bounce text-center whitespace-nowrap z-[100]" 
                          :class="bvmState.feedback.includes('完美') ? 'text-emerald-500' : (bvmState.feedback.includes('太快') ? 'text-rose-500' : 'text-amber-500')">
                         {{ bvmState.feedback }}
                     </div>
@@ -1605,21 +1605,22 @@
                     </div>
                 </div>
 
-                <!-- 數據面板 - 縮減高度 -->
-                <div class="w-full grid grid-cols-2 gap-3 mt-2">
-                    <div class="bg-slate-800/50 rounded-2xl p-3 border border-white/5 text-center">
-                        <p class="text-[9px] font-black text-slate-500 uppercase mb-1">上口間距</p>
-                        <p class="text-2xl font-black font-num" :class="bvmState.lastIntervalIsPass ? 'text-emerald-500' : 'text-rose-500'">{{ bvmState.lastInterval.toFixed(2) }}<span class="text-[10px] ml-1">s</span></p>
+                <!-- 數據面板 -->
+                <div class="w-full grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/50 rounded-3xl p-4 border border-white/5 text-center">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-1">上口間距</p>
+                        <p class="text-3xl font-black font-num" :class="bvmState.lastIntervalIsPass ? 'text-emerald-500' : 'text-rose-500'">{{ bvmState.lastInterval.toFixed(2) }}<span class="text-xs ml-1">s</span></p>
                     </div>
-                    <div class="bg-slate-800/50 rounded-2xl p-3 border border-white/5 text-center">
-                        <p class="text-[9px] font-black text-slate-500 uppercase mb-1">總合格數</p>
-                        <p class="text-2xl font-black font-num text-cyan-500">{{ bvmState.passCount }}</p>
+                    <div class="bg-slate-800/50 rounded-3xl p-4 border border-white/5 text-center">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-1">總合格數</p>
+                        <p class="text-3xl font-black font-num text-cyan-500">{{ bvmState.passCount }}</p>
                     </div>
                 </div>
             </div>
-<!-- padding-bottom 增加到 12rem，確保按鈕一定在白色導航欄上方 -->
-            <footer class="px-6 pt-4 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2200]" 
-                    style="padding-bottom: calc(12rem + var(--safe-bottom));">
+<!-- 將間距調小為 4.5rem，適度避開下方白色導航欄 -->
+            <footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2200]" 
+                    style="padding-bottom: calc(4.5rem + var(--safe-bottom));">
+
                 <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" 
                         @click="submitBvmResult" 
                         class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-[18px] shadow-xl active:scale-95 cursor-pointer">
