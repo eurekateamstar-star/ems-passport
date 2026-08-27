@@ -50,33 +50,31 @@
 .full-screen-modal { position: fixed; inset: 0; background: #f1f5f9; z-index: 900; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px; width: 100%; margin: 0 auto; overflow: hidden; touch-action: none; overscroll-behavior: none; }
         .full-screen-modal.active { transform: translateY(0); }
 
-    .game-fullscreen-modal {
-    position: fixed;
-    inset: 0;
-    height: 100dvh;
-    width: 100%;
-    background: #0f172a;
-    z-index: 2000;
-    display: flex;
-    flex-direction: column;
-    max-width: 450px;
-    margin: 0 auto;
-    transform: translateY(100%);
-    opacity: 0;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    overflow: hidden;
-    /* 這裡加入下面這行 */
-    visibility: hidden; 
-    pointer-events: none;
-}
+   .game-fullscreen-modal {
+            position: fixed;
+            inset: 0;
+            height: 100%; /* 改為 100%，避免在 iframe 中被外部導覽列切掉 */
+            width: 100%;
+            background: #0f172a;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            max-width: 450px;
+            margin: 0 auto;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+            overflow: hidden;
+            visibility: hidden; /* 手機版偵測點擊的關鍵 */
+            pointer-events: none;
+        }
 
-.game-fullscreen-modal.active {
-    transform: translateY(0);
-    opacity: 1;
-    /* 這裡加入下面這兩行，強制開啟點擊 */
-    visibility: visible;
-    pointer-events: auto;
-}
+        .game-fullscreen-modal.active {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
 
         .card-pop { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
         @keyframes cardPop { 0% { opacity:0; transform: scale(0.5) translateY(20px); } 100% { opacity:1; transform: scale(1) translateY(0); } }
@@ -1642,23 +1640,20 @@
                     </div>
                 </div>
             </div>
-<!-- 加入 shrink-0 避免按鈕被擠壓，加入 relative z-50 確保在最上層 -->
-<footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-50" 
-        style="padding-bottom: calc(1.5rem + var(--safe-bottom));">
-    
-    <!-- 加入 cursor-pointer 強制手機識別為可點擊元件 -->
-    <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" 
-            @click="submitBvmResult" 
-            class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 cursor-pointer">
-        提交 BVM 考核結果
-    </button>
-    
-    <button v-else 
-            @click="resetBvmState" 
-            class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest cursor-pointer">
-        重新開始挑戰
-    </button>
-</footer>
+<!-- 修改 padding-bottom 為 5rem，確保按鈕不被外部 App 的導覽列擋住 -->
+            <footer class="px-6 pt-6 bg-slate-900 border-t border-white/10 shrink-0 relative z-[2200]" 
+                    style="padding-bottom: calc(5rem + var(--safe-bottom));">
+                <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" 
+                        @click="submitBvmResult" 
+                        class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-[16px] shadow-xl active:scale-95 cursor-pointer">
+                    提交 BVM 考核結果
+                </button>
+                <button v-else 
+                        @click="resetBvmState" 
+                        class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest cursor-pointer">
+                    重新開始挑戰
+                </button>
+            </footer>
         </template>
 
 
