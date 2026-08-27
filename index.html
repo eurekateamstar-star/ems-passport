@@ -1619,11 +1619,11 @@
                     </div>
                 </div>
             </div>
-
-            <footer class="p-6 bg-slate-900 border-t border-white/10">
-                <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" @click="submitBvmResult" class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95">提交 BVM 考核結果</button>
-                <button v-else @click="resetBvmState" class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">重新開始挑戰</button>
-            </footer>
+<!-- 修改處：加入 padding-bottom 以及針對安全區域的變數 -->
+<footer class="px-6 pt-6 bg-slate-900 border-t border-white/10" style="padding-bottom: calc(1.5rem + var(--safe-bottom));">
+    <button v-if="bvmState.count >= (activeBvmStep?.bvmGoal || 10)" @click="submitBvmResult" class="w-full py-4 bg-cyan-600 text-white rounded-2xl font-black text-lg shadow-xl active:scale-95">提交 BVM 考核結果</button>
+    <button v-else @click="resetBvmState" class="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black text-sm uppercase tracking-widest">重新開始挑戰</button>
+</footer>
         </template>
 
 
